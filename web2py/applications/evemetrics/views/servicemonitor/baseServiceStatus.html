@@ -1,0 +1,67 @@
+{{extend 'servicemonitor/baselayout.html'}}
+
+<style>
+table {
+	width:1000px;
+	-moz-border-radius: 10px;
+	-webkit-border-radius: 10px;
+	-o-border-radius: 10px;
+	border-radius:10px;
+}
+td {
+	padding:6px ;
+	margin:0px;
+	border-bottom:1px solid #AAAAAA;
+	vertical-align: middle;
+	height:24px;
+}
+h1 {
+	font-size:18px;
+}
+img {
+	vertical-align: middle;
+}
+
+.row_good {
+	background-color:#b5ffa4;
+}
+.row_bad {
+	background-color:#fd5f5a;
+}
+.row_warning {
+	background-color:#ffeb7a;
+}
+.row_progress {
+	background-color:#BdC6ff
+}
+.row_none {
+	background-color:#DDDDDD;
+}
+.row_danger {
+	background-color:#aa2222 !important;
+	color:white !important;
+	font-weight:bold;
+}
+</style>
+
+<h1>{{=title}} - {{=datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}}</h1>
+<table>
+<tr>
+	<th>&nbsp;</th>
+	<th>Name</th>
+	<th>Status</th>
+	<th>Start Time</th>
+	<th>Duration</th>
+</tr>
+{{for name in sorted(rows.keys()):
+	r = rows[name]
+	mrcls = ""}}
+<tr class="{{=r["background"]}}{{=mrcls}}">
+	<td width="1%"><img src="{{=URL("/static/images/%s" % r["icon"])}}" width=24></td>
+	<td><b>{{=name}}</b></td>
+	<td>{{=r["status"]}}{{if r["statusID"] == 1: response.write(XML(r["percentCompleteString"]))}}</td>
+	<td>{{=r["startTime"]}}</td>
+	<td{{if r["inOvertime"]: response.write(XML(" style=\"color:red;\""))}}>{{=r["duration"]}}</td>
+</tr>
+{{pass}}
+</table>

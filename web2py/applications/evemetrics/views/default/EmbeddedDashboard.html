@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+
+  <title>{{=response.title or request.application}}</title>
+ {{
+  response.files.append(URL('static','css/skeleton.css'))
+  response.files.append(URL('static','css/web2py.css'))
+  response.files.append(URL('static','css/superfish.css'))
+  response.files.append(URL('static','css/tablesorter.css'))
+  response.files.append(URL('static','css/jquery.tagbox.css'))
+  response.files.append(URL('static','js/superfish.js'))
+  response.files.append(URL('static','jqueryui/css/redmond/jquery-ui-1.8.17.custom.css'))
+
+  # http://shjs.sourceforge.net/
+  response.files.append(URL('static','css/sh/sh_ide-msvcpp.css'))
+  }}
+
+{{include 'web2py_ajax.html'}}
+<base target="_parent" />
+</head>
+<style>
+.bod {
+//background: linear-gradient(to bottom,  rgba(255,255,255,1) 0%,rgba(250,250,250,1) 100%); /* W3C */
+{{if request.vars.background == "noise":}}
+  background: url({{=URL("static/images/noise.png")}});
+{{pass}}
+{{if request.vars.nomargin != "1":}}
+margin-left:12px;
+margin-right:12px;
+{{pass}}
+}
+</style>
+<body class=bod{{if request.vars.refresh: response.write(XML(" onload=\"JavaScript:timedRefresh(%s);\"" % (int(request.vars.refresh) * 60000)))}}>
+<div id="wrapper">
+<div id="center">
+{{include 'default/basedashboard.html'}}
+</div>
+</div>
+<style>
+#wrapper {
+    width:100%;
+    text-align:center;
+}
+
+#center {
+    {{if request.vars.align == "center":}}
+    display:inline-block;
+    max-width:950px;
+    margin-top:{{=(request.vars.top or 10)}}px;
+    {{pass}}
+}
+</style>
+</body>
+</html>

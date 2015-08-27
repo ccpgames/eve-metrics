@@ -1,0 +1,49 @@
+{{extend 'layout.html'}}
+
+<h3>Manage Settings</h3>
+
+<style>
+td {
+	font-size: 11px;
+	padding:2px;
+	vertical-align: top;
+}
+.val {
+		font-weight: bold;
+}
+.group {
+	font-size:16px;
+	padding-top:15px;
+	background-color: white;
+	font-weight: bold;
+}
+.desc {
+	color:gray;
+	font-weight:normal;
+	font-size:10px;
+}
+</style>
+<table class=zebra width=1000>
+{{lastGroup = None
+for s in settings:
+	if lastGroup != s.group:}}
+	<tr><td colspan=4 class=group>{{=s.group}}</td></tr>
+	{{pass
+	lastGroup = s.group}}
+	<tr>
+		<td style="width:50px;"></td>
+		<td><nobr>{{=s.key}}</nobr></td>
+		<td class=val>{{=s.value.replace(";", "; ") or "[Not Set]"}}{{if s.description: response.write(XML("<div class=desc>%s</div>" % s.description))}}</td>
+		<td>
+			{{if s.allowUpdate:}}<a href="EditSetting?group={{=s.group}}&key={{=s.key}}">Edit</a>{{else:}}<font color=gray title="You cannot edit this setting">Edit</font>{{pass}}&nbsp;</td>
+	</tr>
+{{pass}}
+<table>
+
+<script>
+$(document).ready(function()
+    {
+        $(".zebra tr:odd").addClass("alt");
+    }
+);
+</script>

@@ -1,0 +1,38 @@
+{{if request.vars.raw:
+	if request.vars.raw == "int":
+		txt = int(count)
+	else:
+		txt = count
+	pass
+else:
+	txt = FmtAmt(count)
+pass
+if request.vars.rss:
+}}<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	xmlns:georss="http://www.georss.org/georss" xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:media="http://search.yahoo.com/mrss/"
+	>
+<channel>
+  <title>Count</title>
+  <item>
+    <title>{{=txt}}</title>
+    <link>{{=link}}</link>
+    <pubDate>{{=counterDate}}</pubDate>
+  </item>
+</channel>
+
+</rss>
+
+{{else:
+	if request.vars.style:}}
+<div style="{{=XML(request.vars.style.replace(" ", ";"))}}">{{=txt}}</div>
+	{{else:
+		response.write(txt)
+	pass
+pass}}

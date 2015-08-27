@@ -1,0 +1,48 @@
+{{extend 'layout.html'}}
+
+<h2>{{=response.title}}</h2>
+
+<form method=POST>
+<textarea name=sql cols=90 rows=10>{{=sql or ""}}</textarea><br>
+<input type=submit value="Execute SQL">
+</form>
+
+{{
+if error:
+}}
+<div class=error style="margin-left:0px">
+	{{=repr(error).replace("\n", "<br>")}}
+</div>
+{{
+pass
+
+if results:
+  txt = "<table class=\"zebra datatable tablesorter\">"
+  txt += "<thead>"
+  txt += "<tr>"
+  for c in columns:
+  	txt += "<th>%s</th>" % c
+  pass
+  txt += "</tr>"
+  txt += "</thead>"
+  txt += "<tbody>"
+  for r in results:
+    txt += "<tr>"
+    for c in columns:
+      txt += "<td class=normaltext>%s</td>" % getattr(r, c)
+    pass
+    txt += "</tr>"
+  pass
+  txt += "</tbody>"
+  txt += "</table>"
+
+  response.write(XML(txt))
+pass}}
+
+
+<script>
+$(document).ready(function() {
+
+    $(".tablesorter").tablesorter();
+});
+</script>

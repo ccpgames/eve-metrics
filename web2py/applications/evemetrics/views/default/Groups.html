@@ -1,0 +1,30 @@
+{{extend 'layout.html'}}
+
+{{def WriteTable(groups, link, title, icon=None):}}
+<h4>
+{{if icon:}}
+<img src="{{=URL("static/images/%s" % icon)}}" style="vertical-align:middle;">
+{{pass}}
+{{=title}}</h4>
+<table>
+<tr>
+{{
+n = len(groups)
+numRows = n / 5.0
+for i, g in enumerate(groups):
+	if i % 5 == 0: response.write(XML("</tr><tr>"))
+}}
+<td style="padding:8px; border-left:1px solid #EEEEEE; width:20%"><nobr>
+	<a href="{{=URL("%s?groupID=%s" % (link, g.groupID))}}">{{=g.groupName}}</a> <font color=gray>({{=g.num}})</font></nobr></td>
+{{pass}}
+</tr>
+</table>
+<br>
+
+{{pass}}
+
+<br>
+
+{{WriteTable(dashboardGroups, "Dashboards", "Dashboard Groups", "gauge.png")}}
+{{WriteTable(reportGroups, "Reports", "Report Groups", "chart_sml.png")}}
+{{WriteTable(collectionGroups, "Collections", "Collection Groups", "tables.png")}}

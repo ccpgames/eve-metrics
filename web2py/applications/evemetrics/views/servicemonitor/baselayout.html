@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+
+  <title>{{=response.title or request.application}}</title>
+  
+  <meta name="application-name" content="{{=request.application}}" />
+  <link rel="shortcut icon" href="{{=URL('static','favicon.ico')}}" type="image/x-icon">
+  <script src="{{=URL('static','js/modernizr.custom.js')}}"></script>
+
+  <!-- include stylesheets -->
+  {{
+  response.files.append(URL('static','css/skeleton.css'))
+  response.files.append(URL('static','css/charstats.css'))
+  response.files.append(URL('static','css/superfish.css'))
+  response.files.append(URL('static','css/tablesorter.css'))
+  response.files.append(URL('static','css/jquery.tagbox.css'))
+  response.files.append(URL('static','js/superfish.js'))
+  response.files.append(URL('static','jqueryui/css/redmond/jquery-ui-1.8.17.custom.css'))
+
+  # http://shjs.sourceforge.net/
+  response.files.append(URL('static','css/sh/sh_ide-msvcpp.css'))
+  }}
+
+  {{include 'web2py_ajax.html'}}
+
+  <script type="text/javascript">
+    jQuery(function(){ jQuery('ul.sf-menu').supersubs({minWidth:12,maxWidth:30,extraWidth:3}).superfish(); });
+  </script>
+  {{
+  middle_columns = 'sixteen'
+  }}
+
+</head>
+{{def MatchesUrl(url):
+  u = url[1:]
+  if u and u in GetFullUrl() or url == GetFullUrl():
+    return True
+  return False
+pass}}
+<body class=bod{{if request.vars.refresh: response.write(XML(" onload=\"JavaScript:timedRefresh(%s);\"" % (int(request.vars.refresh) * 1000)))}}>
+
+  <div class="wrapper"><!-- for sticky footer -->
+
+    <div style="background-color:#ffbe60;box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 -1px 0 rgba(0, 0, 0, 0.1) inset;">
+      <div class="container">
+      <div class="sixteen columns">
+      {{if not request.user_agent().is_mobile:}}
+        <a href="index"><img src="{{=URL("/static/images/servicemonitor2.png")}}"></a>
+      {{pass}}
+          <div id="navbar" class=normaltext>
+
+          {{#='auth' in globals() and auth.navbar(separators=(' ',' | ',''))}}</div>
+          {{is_mobile=request.user_agent().is_mobile}}
+        </div>
+      </div>
+    </div><!-- topbar -->
+
+    <div class="flash">{{=response.flash or ''}}</div>
+
+    <div class="main">
+      <div class="container">
+        <div class="{{=middle_columns}} columns center">
+          {{block center}}
+          {{include}}
+          {{end}}
+        </div>
+      </div><!-- container -->
+      <style>
+        .container .sixteen.columns { 
+            width: 940px; 
+        }
+      .fullcontainer2 {
+        display: inline-block;
+        text-align:left;
+        width:100%;
+        margin-left:auto;
+        margin-right:auto;
+      }
+
+      .fullcontainer {
+        width:100%;
+        text-align: center;
+      }
+      </style>
+      <div class="fullcontainer">
+        <div class="fullcontainer2">
+          {{block fullView}}
+          {{end}}
+        </div>
+      </div>
+      <div class="container">
+        {{block bottomView}}
+        {{end}}
+      </div>
+
+    </div><!-- main -->
+
+{{if session.userName or 1:
+txt = ""}}
+<div style="width: 960px;margin-left: auto; margin-right: auto; ">
+{{if response.procquery:  txt += "<span OnClick=\"ToggleExpand('procquery');\" class=\"link smallertext\">Show proc SQL</span> &middot; "
+if response.mainquery:    txt += "<span OnClick=\"ToggleExpand('mainquery');\" class=\"link smallertext\">Show main SQL</span> &middot; "
+if response.query:        txt += "<span OnClick=\"ToggleExpand('query');\" class=\"link smallertext\">Show other SQL</span> &middot; "
+txt = txt[:-10]
+response.write(XML(txt))}}
+
+{{if response.procquery:}}
+  <div style="display:none;" id=procquery>
+  <i>Procedure SQL</i>
+  {{for sql in response.procquery:}}
+    <table width="100%" style="border:1px dashed black;"><tr><td><pre class="sh_sql">{{=XML(MakePrettySQL(sql))}}</pre></td></tr></table><br>
+  {{pass}}
+  </div>
+{{pass}}
+  <div style="display:none;" id=mainquery>
+  <i>Primary SQL</i>
+  {{for sql in response.mainquery:}}
+    <table width="100%" style="border:1px dashed black;"><tr><td><pre class="sh_sql">{{=XML(MakePrettySQL(sql))}}</pre></td></tr></table><br>
+  {{pass}}
+  </div>
+  <div style="display:none;" id=query>
+  <i>Secondary SQL</i>
+  {{for sql in response.query:}}
+    <table width="100%" style="border:1px dashed black;"><tr><td><pre class="sh_sql">{{=XML(MakePrettySQL(sql))}}</pre></td></tr></table><br>
+  {{pass}}
+  </div>
+
+
+</div>
+
+{{pass}}
+
+
+</body>
+</html>

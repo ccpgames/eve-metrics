@@ -1,0 +1,578 @@
+{{extend 'layout.html'}}
+{{maxGraphs = request.vars.maxGraphs or 20}}
+<div style="float:right;text-align:right;padding-top:10px;">
+    <strong>
+    {{if numDays > 1:}}
+    	{{=FmtDatePretty(reportDate-datetime.timedelta(days=numDays-1))}} -
+   	{{pass}}
+    {{=FmtDatePretty(reportDate)}}
+    {{if not request.vars.dt:
+    	txt = "latest"
+    	if reportDate < datetime.datetime.today()-datetime.timedelta(days=2):
+    		txt = XML("<font color=red>%s</font>" % txt)
+    	pass}}
+    ({{=txt}})
+    {{pass}}
+    <input type="hidden" id="datepicker" OnChange="GotoDate(this);" value="{{=request.vars.dt or ""}}">
+    <br></strong>
+	{{=XML(navigationLinks)}}
+</div>
+
+{{def WriteColumnSelect(name):}}
+{{if len(report.get("columns", [])) > 1:}}
+	<select name={{=name}} id={{=name}}>
+	{{allIDs = []
+	for subjectID, subjectText in report["columns"].iteritems():
+		allIDs.append(str(subjectID))}}
+		<option value={{=subjectID}}>
+			{{s = subjectText
+			if type(s) == types.TupleType:
+				s = s[0]
+			pass
+			response.write(s)}}
+		</option>
+	{{pass
+	s = ""
+	if report["rows"] and len(report["rows"]) == 1: s = " Selected"}}
+	<option value="{{=",".join(allIDs)}}"{{=s}}>ALL</option>
+	</select>
+{{elif "columns" in report:
+	subjectID = report.get("columns").keys()[0]}}
+	<input type=hidden name={{=name}} id={{=name}} value="{{=subjectID}}">
+{{pass}}
+
+{{pass}}
+<h4>{{=WriteStar(starred)}}<span class=groupLink><a href="Reports?groupID={{=groupID}}">{{=groupName}}<img class=middleimg src="{{=URL("static/images/asc2.gif")}}"></a></span> / {{=XML(reportTitle)}}
+{{if IsRestricted("COUNTER", counterID) != ACCESS_OPEN:}}
+<a href="{{=URL("AccessRules?contentType=COUNTER&contentID=%s" % counterID)}}"><img src="{{=URL("static/images/lock.png")}}" class="middleimg" title="This report has access restrictions"></a>
+{{pass}}
+{{if session.admin or 1:}}
+<span class=normaltext style="color:gray;">(<a style="color:gray;" href="EditCounter?counterID={{=request.vars.counterID}}">edit</a>)</span>
+{{pass}}</span></h4>
+{{if not counter.published:}}
+<h6 style="color:crimson;">This counter is running against a test server and has not been published yet</h6>
+{{pass}}
+{{if counter.obsolete:}}
+<h6 style="color:crimson;">This counter has been marked as obsolete</h6>
+{{pass}}
+{{if numDays > 1 and counter.absoluteValue:}}
+<h6 style="color:crimson;font-weight:bold;" class=normaltext>WARNING: Counter has absolute values. Viewing more than one day makes no sense!</h6>
+{{pass}}
+
+
+
+<script>
+$(function() {
+	$("#datepicker").datepicker({
+		showOn: "button",
+		buttonImage: '{{=URL("/static/images/calendar.png")}}',
+		buttonImageOnly: true,
+		dateFormat: "yy-mm-dd",
+		changeMonth: true,
+		changeYear: true
+	});
+});
+function GotoDate(what) {
+	dt = $(what).val();
+	Goto('{{=XML(GetFullUrlWithout("dt"))}}dt=' + dt);
+}
+
+function AddNewValue() {
+	$("#dialog-form")
+		.data('collectionCounterID', 1)
+		.dialog("open");
+
+}
+
+function PopulateSearchKey(n) {
+    $("#addvalue_key").autocomplete("search", $("#addvalue_key").val());
+}
+
+function DeleteRowFromReport() {
+	var counterID = $("#addvalue_counterID").val();
+	var dt = $("#addvalue_dt").val();
+	var keyText = $("#addvalue_key").val();
+	if (!confirm("Are you sure you want to delete the key " + keyText + " from this day?"))
+		return;
+
+	url = "DeleteKeyFromCounter?counterID=" + counterID + "&dt=" + dt + "&keyText=" + keyText;
+	Goto(url);
+}
+</script>
+
+{{if counter.sourceType == "MANUAL":}}
+<div id="dialog-form" title="Add Count">
+<form id="addcountform" method="POST" action="AddCountToReport">
+<table>
+<tr>
+	<td>{{=(keyTitle or "").replace("ID", "")}}</td><td>Column</td><td>Count</td>
+</tr>
+<tr>
+
+	<td><nobr>
+		{{if keyTitle:}}
+		<input type="text" id="addvalue_key" name="key" style="width:160px;"> <a href="#" OnClick="PopulateSearchKey();">...</a>
+		{{pass}}
+	</nobr>
+	</td>
+
+<td><select name=columnID style="width:100px;">
+{{for colID, v in report.get("columns", {}).iteritems():}}
+	<option value="{{=colID}}">{{=v[0]}}</option>
+{{pass}}
+
+</select></td>
+<td><input type="text" id="addvalue_count" name="count" style="width:70px;"></td>
+</tr>
+</table>
+<input type=hidden name=counterID id="addvalue_counterID", value="{{=counter.counterID}}">
+<input type=hidden name=dt id="addvalue_dt" value="{{=FmtDate(reportDate)}}">
+</form>
+&nbsp;<a href="#" OnClick="DeleteRowFromReport();" class=normaltext style="color:crimson;">delete row</a>
+</div>
+{{pass}}
+
+<div id=counterform>
+	<form method=get>
+		<table style="width:320px;">
+			<tr><td>Entries</td>
+			{{if "subjectID" in keyColumns:}}
+			<td>Group By</td>
+			{{pass}}
+			<td>Text Filter</td><td>Sort</td><td></td><td>Days</td></tr>
+			<tr>
+				<td>
+					<input type=hidden name=counterID value="{{=request.vars.counterID}}">
+					<input type=hidden name=dt value="{{=request.vars.dt or ""}}">
+					<select name=maxRows id=maxRows style="width:100px;">
+					{{
+						e = [1, 3, 5, 10, 20, 50, 100, 500, 1000, 10000]
+						for k in e:
+							s = ""
+							if k == int(request.vars.maxRows or 20): s = " Selected"}}
+						<option value={{=k}}{{=s}}>{{=k}}</option>
+					{{pass}}
+					</select>
+				</td>
+				{{if "subjectID" in keyColumns:}}
+				<td>
+				<select name=aggregate id=aggregate style="width:150px;">
+				<option value=0>None</option>
+				<option value=2{{if request.vars.aggregate == "2": response.write(" Selected")}}>{{=keyColumns["subjectTitle"]}}</option>
+				<option value=1{{if request.vars.aggregate == "1": response.write(" Selected")}}>{{=keyColumns["keyTitle"]}}</option>
+				</select>
+				</td>
+				{{pass}}
+				<td>
+					<input type=text name=filterText value="{{=request.vars.filterText or ""}}">
+				</td>
+				<td>
+					<select name=orderColumnID style="width:120px;">
+					{{if "columns" in report:
+					for subjectID, column in report["columns"].iteritems():
+						s = ""
+						if subjectID == int(request.vars.orderColumnID or 0): s = " Selected"}}
+						<option value={{=subjectID}}{{=s}}>{{=column[0]}}</option>
+						{{
+					pass}}
+					{{else:}}
+					<option value=1>Count</option>
+					{{pass}}
+
+					</select>
+				</td>
+				<td>
+					<select name=orderAsc style="width:100px;">
+					{{for sortDir, sortDirName in {0: "Highest first", 1: "Lowest first"}.items():
+						s = ""
+						if sortDir == int(request.vars.orderAsc or 0): s = " Selected"}}
+						<option value={{=sortDir}}{{=s}}>{{=sortDirName}}</option>
+					{{pass}}
+					</select>
+				</td>
+				<td>
+					<input type=text name=numDays value="{{=request.vars.numDays or 1}}" style="width:36px;">
+				</td>
+				<td>
+					<input type=submit value="View Report">
+				</td>
+				{{if (request.vars.filterText or counter.sourceType == "MANUAL") and not request.vars.all:}}
+				<td class=normaltext title="Also show entries with no count"><nobr><a href="{{=GetFullUrl()}}all=1">view all</a></nobr></td>
+				{{pass}}
+			</tr>
+
+		</table>
+	</form>
+</div>
+
+{{block fullView}}
+<style>
+.ot {
+	background: -webkit-linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+	background: -moz-linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+	background: -linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+	background: -ms-linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+	background: linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+}
+</style>
+{{tableWidth = "940px"
+if int(GetCookie("fullwidth") or 0) or "": tableWidth = "100%"
+
+}}
+<table id=myTable class="zebra datatable tablesorter" style="max-width:{{=tableWidth}}; margin:auto;width:100%">
+{{
+	checked = ""
+	if report["rows"] and len(report["rows"]) == 1: checked = " Checked"
+}}
+<thead>
+	<tr>
+		{{if "subjectID" in keyColumns:}}
+			<th>{{=keyColumns["subjectID"]}}</th>
+			<th>{{=keyColumns["subjectTitle"]}}</th>
+		{{pass}}
+		{{if "keyID" in keyColumns:}}
+			<th>{{=keyColumns["keyID"]}}</th>
+			<th>{{=keyColumns["keyTitle"]}}</th>
+		{{pass}}
+		{{for colID in report["columns"].iterkeys():
+			colName, desc = report["columns"][colID]}}
+			<th style="text-align:right;" title="{{=(desc or "").replace("\n", "<br>")}}" class="tt{{if int(request.vars.orderColumnID or -1) == colID and len(report["columns"]) > 1: response.write(" ot")}}"><nobr>{{=colName}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</nobr></th>
+			{{
+		pass}}
+			<th width="1%" class=header><input type=checkbox onclick="toggleChecked(this.checked)"></th>
+
+	</tr>
+</thead>
+<tbody>
+	{{
+	totals = OrderedDict()
+	for row in report["rows"] or []:
+		keyID = 0
+		subjectID = 0}}
+		<tr>
+		{{if "subjectID" in keyColumns:
+			subjectID = getattr(row, "subjectID")}}
+			<td class=gray>{{=subjectID}}</td>
+			<td>{{=GetUrlForSubjectOrKey(subjectID, getattr(row, "subjectText"), subjectLink, subjectLabel)}}</td>
+		{{pass}}
+		{{if "keyID" in keyColumns:
+			keyID = getattr(row, "keyID")}}
+			<td class=gray>{{=keyID}}</td>
+			<td>{{=GetUrlForSubjectOrKey(keyID, getattr(row, "keyText"), keyLink, keyLabel)}}</td>
+		{{pass}}
+			{{for c, name in report["columns"].iteritems():}}
+			<td class=tablenumber>
+				{{
+				name = name[0]
+				if c not in totals: totals[c] = 0
+
+				v = getattr(row, name)
+				amt = FmtAmt(v)
+				totals[c] += v
+				txt = HistoryLink(amt, request.vars.counterID, subjectID or c, keyID)
+				response.write(txt)
+				}}
+			</td>
+			{{pass
+			if subjectID > 0:
+				v = "%s+%s" % (keyID, subjectID or c)
+			else:
+				v = keyID
+			pass
+			}}
+			<td><input type=checkbox class=rowchk id=keyID name="key" value="{{=v}}"{{=checked}}></td>
+		</tr>
+	{{pass}}
+</tbody>
+</table>
+
+<div style="width:100%;max-width:940px;margin:auto;" class=smallertext>{{=len(report["rows"]) if report["rows"] else 0}} rows</div>
+
+{{end}}
+
+{{block bottomView}}
+<table style="width:100%; margin:0px; padding:0px;">
+<tr>
+<td>
+
+<a class="smallbutton" OnClick="ShowAddToCollection();">Add to Collection...</a>
+<a class="smallbutton" OnClick="ShowAddToDigest();">Add to Digest...</a>
+<a class="smallbutton" OnClick="ShowAddToAlert();">Add Alert...</a>
+
+</td>
+<td style="text-align:right;">
+{{WriteColumnSelect("subjectID_graph")}}
+<input type=submit name=graph value="Graph selected" OnClick="GraphSelected();">
+{{if not request.vars.all:
+diffSub = ""
+
+if len(report.get("columns", [])) >= 1:
+   try:
+     l = report["columns"].keys()[0]
+    except:
+     l = report["columns"].keys()[0]
+    pass
+   diffSub = "&subjectID=%s" % (l or 0)
+pass
+d = reportDate.strftime("%Y-%m-%d")}}
+<br>
+<span OnClick="GraphTopTen();" class="link normaltext">Graph top 10</span>
+{{if "subjectID" not in keyColumns:}} &middot; <a href="DiffReport?counterID={{=request.vars.counterID}}{{=diffSub}}&reportDate={{=d}}" class="link normaltext">View Difference Report</a>
+{{pass}}
+
+{{pass
+if not keyTitle and 0:}}
+&middot; <span OnClick="ShowTrends();" class="link normaltext">Show trends</span>
+{{pass}}
+{{pass}}
+</td></tr>
+</table>
+{{=WriteExportToExcel("myTable")}}
+
+<script>
+function ShowAddToCollection(all)
+{
+	LoadAddToContainer("collection", "Report", "counterID={{=request.vars.counterID}}", all);
+}
+function ShowAddToDigest(all)
+{
+	LoadAddToContainer("digest", "Report", "counterID={{=request.vars.counterID}}&title="+encodeURIComponent("{{=XML(reportTitle)}}"), all);
+}
+function ShowAddToAlert(all)
+{
+	LoadAddToContainer("alert", "Report", "counterID={{=request.vars.counterID}}", all);
+}
+</script>
+
+{{if counter.sourceType == "MANUAL":}}
+<div style="padding-bottom:5px;">
+	<a class=button href"#" OnClick="AddNewValue();"><img src="{{=URL("static/images/add2.png")}}" style="vertical-align:middle; height:14px;"> Add count</a>
+</div>
+{{pass}}
+
+<div id="addtoparentcontainer" style="display:none;">
+
+</div>
+
+
+
+<div class=normaltext>This counter was added by <span style="font-weight:bold;">{{=counter.userName}}</span> on {{=counter.createDate.strftime("%Y.%m.%d")}}
+
+(<span class=link OnClick="ToggleExpand('counterinfo');">more</span>)
+
+<div style="display:none" id=counterinfo>
+Counter Identifier: <i>{{=counter.counterIdentifier}}</i>
+<table width="100%"><tr><td style="padding:0px;width:50px;padding-right:5px;">
+<nobr>Related counters:</nobr></td><td style="padding:0px;">
+{{txt = ""
+keys = relatedCounters.keys()
+keys.sort()
+for k in keys:
+	c = relatedCounters[k]
+	txt += "<a href=\"Report?counterID=%s\">%s</a>, " % (c.counterID, c.counterName)
+pass
+if txt == "": txt = "(none), "
+txt = txt[:-2]
+response.write(XML(txt))
+}}
+</td></tr>
+<tr><td></td><td style="text-align:right">
+	Source: {{=(counter.sourceType or "").capitalize()}} / {{=counter.source or "-"}}
+	{{if counter.procedureName:}}
+	<br>Procedure: {{=counter.procedureName}}
+	{{pass}}
+</td></tr>
+</table>
+</div>
+</div>
+{{
+	tagLinkID = request.vars.counterID
+	tagLinkType = TAG_REPORT
+
+	if counter.userName == session.userName:
+		contentType = "COUNTER"
+		contentID = counterID
+	pass
+}}
+{{include 'default/TagBox.html'}}
+
+{{end}}
+
+<script>
+
+function GraphTopTen() {
+	var counterID = {{=request.vars.counterID}};
+	var subjectID = $("#subjectID").val();
+	if (subjectID == undefined) {
+		subjectID = -1
+	}
+	url = "Counters?graph=" + counterID + "_" + subjectID + "_-10"
+	{{if request.vars.filterText:}}
+		url += "&search={{=request.vars.filterText}}"
+	{{pass}}
+	window.location.href = url;
+}
+
+function ShowTrends() {
+
+}
+
+
+function GetSelected(subjectIDs) {
+	selLst = []
+	var counterID = {{=request.vars.counterID}};
+	$("input:checked").each(function() {
+		if ($(this).attr("name") != "key")
+			return;
+		k = $(this).val();
+		var keyID;
+		if (k.indexOf("+") <= 0) {
+			keyID = k;
+		} else {
+			lst = k.split("+");
+			keyID = lst[0];
+			if (subjectIDs.length <= 1)
+				subjectIDs = [lst[1]];
+		}
+		for (i = 0; i < subjectIDs.length; i++) {
+			selLst[selLst.length] = [counterID, subjectIDs[i], keyID];
+		}
+	})
+	return selLst;
+}
+
+
+function GraphSelected() {
+	url = "Counters?annotations=1&";
+	counterID = {{=request.vars.counterID}};
+	var subjectID = $("#subjectID_graph").val();
+	if (subjectID == undefined) {
+		subjectID = ""
+	}
+	g = ""
+	var lst = GetSelected(subjectID.split(","));
+	if (lst.length == 0)  {
+		alert("Select some rows first.");
+		return
+	} else if (lst.length > {{=maxGraphs}}) {
+		alert("You can make at most {{=maxGraphs}} graphs.");
+		return
+	}
+	for (i = 0; i < lst.length; i++)
+		g += "graph=" + selLst[i][0] + "_" + selLst[i][1] + "_" + selLst[i][2] + "&"
+	url += g
+	window.location.href = url;
+}
+
+function ZoomDay() {
+	var startDate = '{{=(request.vars.dt or "")}}'
+	var endDate = startDate;
+	url = "TimeCounters?startDate="+startDate+"&endDate="+endDate+"&";
+	counterID = {{=request.vars.counterID}};
+	var subjectID = $("#subjectID_graph").val();
+	if (subjectID == undefined) {
+		subjectID = ""
+	}
+	g = ""
+	var lst = GetSelected(subjectID.split(","));
+	if (lst.length == 0)  {
+		alert("Select some rows first.");
+		return
+	} else if (lst.length > 1) {
+		alert("You can only view one time details at a time.");
+		return
+	}
+	for (i = 0; i < lst.length; i++)
+		g += "graph=" + selLst[i][0] + "_" + selLst[i][1] + "_" + selLst[i][2] + "&"
+	url += g
+	window.location.href = url;
+}
+
+
+$(document).ready(function()
+    {
+        $(".zebra tr:odd").addClass("alt");
+    }
+);
+
+function ToggleShow(which, id) {
+	$("#" + id).show();
+	$(which).hide();
+}
+
+var menuDiv = null;
+$(document).ready(function() {
+    $(".tablesorter").tablesorter( {headers: { {{=numCols}}: { sorter: false} }, textExtraction: tableSorterSortMethod} );
+
+    $(".tablesorter").bind("sortEnd",function() {
+    	$(".zebra tr:even").removeClass("alt");
+        $(".zebra tr:odd").addClass("alt");
+    });
+
+	$(".groupLink").bind("mouseover", function() {
+		if (menuDiv == null) {
+			menuDiv = $("<div class=menudiv></div>");
+			menuDiv.html('{{=groupText}}');
+			$(this).append(menuDiv);
+		}
+		var o = $(this).offset();
+		var t = o.top;
+		var l = o.left;
+		menuDiv.show();
+		menuDiv.offset({ top: t+18, left: l });
+	});
+	$(".groupLink").bind("mouseout", function() {
+		if (menuDiv != null) {
+			menuDiv.hide();
+		}
+	});
+
+	$("#dialog-form").dialog({
+		autoOpen: false,
+		height: 190,
+		width: {{=420 if keyTitle else 240}},
+		modal: true,
+		open: function(event, ui) {
+			$("addvalue_key").val("");
+			$("addvalue_count").val("");
+		},
+		buttons: {
+			"Submit": function() {
+				$(this).dialog("close");
+				$("#addcountform").submit();
+		},
+		Cancel: function() {
+			$(this).dialog("close");
+		}},
+		close: function() {
+			//allFields.val("").removeClass("ui-state-error");
+		}});
+
+	$(function() {
+	    $("#addvalue_key").autocomplete({
+	        minLength: 0,
+	        source: "SearchKeyTexts?counterID={{=counter.counterID}}",
+	        select: function(event, ui) {
+	            $(this).val(ui.item.value);
+	            //n = $(this).attr("id").split("_")[1]
+	            //$("#searchValue_" + n).focus();
+	            return false;
+	        }
+	    });
+	});
+});
+
+</script>
+
+<style>
+.menudiv {
+	border:1px solid #8d9dad;
+	background-color:#fafaff;
+	padding-left:5px;
+	font-size:12px;
+	width:360px;
+	position:absolute;
+	display:none;
+	z-index:200;
+}
+</style>

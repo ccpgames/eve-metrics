@@ -1,0 +1,97 @@
+{{extend 'layout.html'}}
+<h2><a href="TaskLogs?db={{=request.vars.db}}&filt={{=request.vars.filt}}&numRows={{=request.vars.numRows}}"><<</a> Task Log Details ({{=database}})</h2>
+<style>
+.key {
+	color:#999999;
+	text-align:right;
+	font-size: 12px;
+	line-height: 130%;
+}
+.val {
+	font-size: 12px;
+	line-height: 130%;
+}
+.ce {
+	background-color:#DDEEDD;
+}
+.er {
+	background-color:#FFDDDD;
+}
+</style>
+{{if event:
+	rightTable = leftTable = ""
+	for d in event.cursor_description:
+		colName = d[0]
+		v = str(getattr(event, colName))[:48]
+		if v == "None": v = ""
+		row = ""
+		if v:
+			row = "<tr><td class=key>%s</td><td class=val>%s</td></tr>" % (colName, v)
+		pass
+		if "_" in colName: 
+			rightTable += row
+		else: 
+			leftTable += row
+		pass
+	}}
+	{{pass}}
+	<div style="float:left;">
+	<table style="border:1px solid #EEEEEE; margin:5px;">
+		{{=XML(leftTable)}}
+	</table>
+	</div>
+	<div style="float:left;">
+	<table style="border:1px solid #EEEEEE; margin:5px;">
+		{{=XML(rightTable)}}
+	</table>
+	</div>
+	<div style="clear:both;"></div>
+	{{if event.eventText:}}
+	<div style="border:1px solid gray; padding:5px;margin-top:10px;">
+	<div style="font-family:Courier New;">
+		{{=XML((event.eventText or "").replace("\n", "<br>"))}}
+	</div>
+	</div>
+	{{pass}}
+{{pass}}
+<table class="zebra datatable tablesorter">
+<thead>
+<tr>
+	<th>eventID</th>
+	<th>eventDate</th>
+	<th>eventTypeName</th>
+	<th>taskName</th>
+	<th>fixedText</th>
+	<th>duration</th>
+	<th>int_1</th>
+	<th>int_2</th>
+	<th>int_3</th>
+</thead>
+<tbody>
+{{for r in rows:
+	indent = XML("&nbsp;" * 3 * ((r.eventLevel or 0)-1))
+	cl = ""
+	if r.eventID == eventID: cl = "ce"
+	if "ERROR" in r.eventTypeName: cl = cl + " er"
+}}
+<tr class="{{=cl}}">
+	<td><nobr><a href="TaskLogsDetails?db={{=request.vars.db}}&filt={{=request.vars.filt}}&numRows={{=request.vars.numRows}}&text={{=request.vars.text}}&eventID={{=r.eventID}}">{{=r.eventID}}</a></nobr></td>
+	<td><nobr>{{=r.eventDate}}</nobr></td>
+	<td{{if "ERROR" in r.eventTypeName: response.write(XML(" style=\"color:crimson;font-weight:bold;\""))}}><nobr>{{=indent}}{{=r.eventTypeName}}</nobr></td>
+	<td><nobr>{{=indent}}{{=r.taskName}}</nobr></td>
+	<td><nobr>{{=(r.fixedText or "")}}</nobr></td>
+	<td><nobr>{{=(r.duration or "")}}</nobr></td>
+	<td>{{=(r.int_1 or "")}}</td>
+	<td>{{=(r.int_2 or "")}}</td>
+	<td>{{=(r.int_3 or "")}}</td>
+</tr>
+
+{{pass}}
+</tbody>
+</table>
+
+<script>
+$(document).ready(function() { 
+    $(".tablesorter").tablesorter( ); 
+});
+</script>

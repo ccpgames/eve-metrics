@@ -1,0 +1,365 @@
+{{
+def GetStacking():
+  ret = "null"
+  if "stacked" in viewMode:
+    ret = "'normal'"
+  elif "percent" in viewMode:
+    ret = "'percent'"
+  pass
+  return XML(ret)
+
+width = graphWidth
+height = graphHeight
+chartHeight = "85"
+if height < 400: chartHeight = "80"
+
+sameGroup = True
+lastGroup = None
+for c in currCharts:
+  if lastGroup is not None and c["groupName"] != lastGroup: sameGroup = False
+  lastGroup = c["groupName"]
+pass
+sameCounter = True
+lastCounter = None
+for c in currCharts:
+  if lastCounter is not None and c["counterName"] != lastCounter: sameCounter = False
+  lastCounter = c["counterName"]
+pass
+chartLabel = None
+
+def GetChartName(chart):
+  if sameCounter and chart["chartName"]:
+    n = chart["chartName"];
+  elif sameGroup:
+    n = chart["counterName"]
+    if chart["chartName"]: n += " : " + chart["chartName"]
+  else:
+    n = chart["groupName"] + " / " + chart["counterName"]
+    if chart["chartName"]: n += " : " + chart["chartName"]
+  pass
+  n = re.sub('<[^<]+?>', '', '%s' % n)
+  chartLabel = None
+  if collection and "collectionCounterID" in chart:
+      ccID = chart["collectionCounterID"]
+      for c in collection.counters:
+          if c.collectionCounterID == ccID:
+              chartLabel = c.label
+          pass
+      pass
+  pass
+  if chartLabel: n = chartLabel
+  #return 
+  chart["chartNameForGraph"] = CutAt(n, 140).replace("'", "\\'").replace("\r", "").replace("\n", "")
+pass
+
+plotBands = ""
+showWeekends = (lastDate-firstDate <= datetime.timedelta(days=65))
+if (aggregateMethod and aggregateMethod != "DateDay"): showWeekends = False
+if showWeekends:
+  dt = firstDate
+  while dt < lastDate + datetime.timedelta(days=7):
+    if dt.weekday() == 5:
+      tomorrow = dt + datetime.timedelta(days=1)
+      plotBands += """
+  {
+              color: 'rgba(170, 170, 170, 0.07)',
+              from: Date.UTC(%d, %d, %d, 00, 00),
+              to: Date.UTC(%d, %d, %d, 23, 59)
+    },""" % (dt.year, dt.month-1, dt.day, tomorrow.year, tomorrow.month-1, tomorrow.day)
+    pass
+    dt += datetime.timedelta(days=1)
+  pass
+pass
+vAxisTitle = ["", ""]
+cfgMinValue = [None, None]
+cfgMaxValue = [None, None]
+
+for c in currCharts:
+  axis = int(c["config"].get("axis", "0"))
+  if not vAxisTitle[axis]: vAxisTitle[axis] = c["config"].get("title", "")
+  if cfgMinValue[axis] in (None, ""): cfgMinValue[axis] = c["config"].get("minValue", None) or None
+  if cfgMaxValue[axis] in (None, ""): cfgMaxValue[axis] = c["config"].get("maxValue", None) or None
+pass
+
+minValue = [None, None]
+maxValue = [None, None]
+tickInterval = [None, None]
+if zoom:
+  minValue = [9E20, 9E20]
+  maxValue = [-9E20, -9E20]
+  for c in currCharts:
+    axis = int(c["config"].get("axis", 0))
+    if "stacked" in viewMode:
+      if maxValue[axis] == -9E20: maxValue[axis] = 0
+      if minValue[axis] == 9E20: minValue[axis] = 0
+      maxValue[axis] += c["maxValue"]
+      minValue[axis] += c["minValue"]
+    else:
+      if c["minValue"] < minValue[axis]: minValue[axis] = c["minValue"]
+      if c["maxValue"] > maxValue[axis]: maxValue[axis] = c["maxValue"]
+    pass
+  pass
+pass
+for axis in [0, 1]:
+  if cfgMinValue[axis] is not None:
+    minValue[axis] = cfgMinValue[axis]
+  pass
+  if cfgMaxValue[axis] is not None:
+    maxValue[axis] = cfgMaxValue[axis]
+  pass
+  if minValue[axis] is not None: minValue[axis] = float(minValue[axis])
+  if maxValue[axis] is not None: maxValue[axis] = float(maxValue[axis])
+  #if maxValue[axis]: tickInterval[axis] = (int((float(maxValue[axis])-float(minValue[axis] or 0)))/5.0)
+  if maxValue[axis] > 10000:
+    if cfgMaxValue[axis] is None: maxValue[axis] = int(maxValue[axis]/1000)*1000 + 1000
+    if cfgMinValue[axis] is None: minValue[axis] = int(minValue[axis]/1000)*1000
+    #if maxValue[axis] - minValue[axis] > 10000: tickInterval[axis] = int(tickInterval[axis]/1000)*1000
+  pass
+  if tickInterval[axis] > 2: tickInterval[axis] = int(tickInterval[axis])
+pass
+
+#response.write("tickInterval = %s, %s %s" % (tickInterval, minValue, maxValue))
+doShowTitle = False
+try:
+  doShowTitle = showTitle
+except:
+  doShowTitle = (len(currCharts) == 1)
+pass
+if request.vars.goal:
+  dt = firstDate
+  seriesTxt = ""
+  while dt <= lastDate:
+    dtLst = [dt.year, dt.month, dt.day]
+    dt += datetime.timedelta(days=1)
+    hour = 0
+    minute = 0
+    try:
+      v = float(request.vars.goal)
+    except:
+      v = 0
+    pass
+    seriesTxt += "[Date.UTC(%(year)d, %(month)d, %(day)d, %(hour)s, %(minute)s), %(val)s ],\n" % {
+            "year"  : dtLst[0], 
+            "month" : int(dtLst[1])-1,
+            "day"   : dtLst[2], 
+            "hour"  : hour, 
+            "minute"  : minute, 
+            "val"   : v,
+          }
+  pass
+  chart = {"chartName" : "Goal", "groupName" : "", "counterName" : "", "seriesTxt" : seriesTxt, "config" : {"chartType" : "line", "color" : "FF0000"}, "absoluteValue" : True}
+  currCharts.append(chart)
+pass
+}}
+
+{{
+digestTitleForThisChart = ""
+if doShowTitle:}}
+<h4>
+  {{if chartLabel:}}
+    <span style="font-weight:bold; padding-left:10px;">{{=chartLabel}}</span>
+    {{digestTitleForThisChart = chartLabel}}
+  {{else:}}
+    <a class=tt href="Reports?groupID={{=currCharts[0]["groupID"]}}">{{=currCharts[0]["groupName"]}}</a> /
+    <a class=tt href="Report?counterID={{=currCharts[0]["counterID"]}}" title="{{=FmtText(currCharts[0]["counterDescription"])}}">{{=currCharts[0]["counterName"]}}</a>
+    {{digestTitleForThisChart = currCharts[0]["counterName"]}}
+{{
+chartName = currCharts[0]["chartName"]
+
+if chartName:
+  response.write(" : %s" % XML(chartName))
+  digestTitleForThisChart += " : %s" % chartName.decode("UTF-8")
+pass}}
+{{pass}}
+</h4>
+{{pass}}
+{{if not digestTitle: digestTitle = digestTitleForThisChart}}
+<div id="container_{{=controlID}}" style="height: {{=int(height)}}px; margin: 0 auto"></div>
+<script>
+{{lowestValue = 999999
+  for c in currCharts:
+    if c.get("minValue", None) and c["minValue"] < lowestValue: lowestValue = c["minValue"]
+  pass
+}}
+//'StockChart', 
+$(function () {
+        $('#container_{{=controlID}}').highcharts({{if request.vars.stockchart: response.write(XML("'StockChart', "))}} {
+            chart: {
+                type: '{{=chartType.replace("Chart", "").lower()}}',
+                zoomType: 'x',
+                alignTicks: false,
+            },
+            title: {
+                text: ""
+            },
+            scrollbar: {
+                enabled: false
+            },
+            credits: {
+                  enabled: false
+              },
+            xAxis: {
+                type: 'datetime',
+                events: {
+                  setExtremes: function() {$('.highcharts-scrollbar').show()}
+                },
+                {{if firstDate and lastDate and not timeDetailsFound:
+                  newFirstDate = firstDate
+                  newLastDate = lastDate
+                  if lastDate == firstDate:
+                    newLastDate += datetime.timedelta(days=1)
+                    newFirstDate -= datetime.timedelta(days=1)
+                  pass}}
+                min: Date.UTC({{=newFirstDate.year}}, {{=newFirstDate.month-1}}, {{=newFirstDate.day}}),
+                max: Date.UTC({{=newLastDate.year}}, {{=newLastDate.month-1}}, {{=newLastDate.day}}),
+                {{pass}}
+              plotBands: [
+                {{=XML(plotBands)}}
+              ],
+              {{if request.vars.fontSize:}}
+              labels: {
+                  style: {
+                      fontSize:'{{=request.vars.fontSize}}px',
+                  },
+                  y: 20,
+              }
+              {{pass}}
+
+            },
+            yAxis: [
+            {{for axis in [0, 1]:}}
+            {
+                title: {
+                    text: '{{=vAxisTitle[axis]}}',
+                },
+                {{if minValue[axis] is not None or maxValue[axis] is not None:}}
+                  {{if minValue[axis] is not None: response.write("min: %s," % minValue[axis])}}
+                  {{if maxValue[axis] is not None: response.write("max: %s," % maxValue[axis])}}
+                  {{if tickInterval[axis]: response.write("tickInterval: %s," % tickInterval[axis])}}
+                {{else:}}
+                  min: {{=min(lowestValue, 0)}},
+                {{pass}}
+                {{if axis == 1:}}
+                  opposite: true,
+                {{pass}}
+              {{if request.vars.fontSize:}}
+              labels: {
+                  style: {
+                      fontSize:'{{=request.vars.fontSize}}px',
+                  }
+              }
+              {{pass}}
+            },
+
+            {{pass}}
+            ],
+            plotOptions: {
+                area: {
+                    stacking: {{=GetStacking()}},
+                    marker: {
+                        enabled: false,
+                        symbol: 'circle',
+                        states: {
+                            hover: {
+                                enabled: true
+                            }
+                        }
+                    }
+                },
+                line: {
+                    stacking: {{=GetStacking()}},
+                    marker: {
+                        enabled: false,
+                        symbol: 'circle',
+                        states: {
+                            hover: {
+                                enabled: true
+                            }
+                        }
+                    }
+                },
+                column: {
+                    stacking: {{=GetStacking()}},
+                    marker: {
+                        enabled: false,
+                        symbol: 'circle',
+                        states: {
+                            hover: {
+                                enabled: true
+                            }
+                        }
+                    },
+                    borderWidth: 0,
+                },
+                series: {
+                    animation: false
+                }
+            },
+            legend: {
+                itemStyle: {
+                    fontSize: '9px'
+                },
+                borderColor: 'null',
+                enabled: {{response.write("true") if len(currCharts) > 1 else response.write("false")}},
+            },
+            series: [
+            {{for i, chart in enumerate(currCharts):
+              GetChartName(chart)}}
+            {
+                type: '{{=chart["config"].get("chartType", chartType.replace("Chart", "").lower())}}',
+                name: '{{=chart["chartNameForGraph"]}}',
+                data: [ {{=XML(chart["seriesTxt"])}} ],
+                yAxis: {{=chart["config"].get("axis", "0")}},
+                color: '#{{=chart["config"].get("color", DEFAULT_CHART_COLORS[i]) or DEFAULT_CHART_COLORS[i]}}',
+                fillOpacity: {{=chart["config"].get("opacity", "0.1") or "0.1"}},
+                dataGrouping: {approximation: "{{=("average" if chart["absoluteValue"] else "sum")}}"},
+                lineWidth: {{=chart["config"].get("lineWidth", 2) or 2}},
+                dashStyle: '{{=chart["config"].get("lineStyle", "Solid") or "Solid"}}',
+                marker : {
+                  enabled : true,
+                  symbol: '{{=chart["config"].get("markerStyle", "circle") or "circle"}}',
+                  radius : {{=chart["config"].get("pointSize", 0) or 0}}
+                },
+                tooltip: {
+                    pointFormat: '{series.name}: <b>{point.y:,.0f}</b><br>',
+                    shared: true,
+
+                },
+                {{if i == 0: response.write(XML("id: 'mainseries',"))}}
+            }, 
+            {{pass}}
+            {
+            type: 'flags',
+            name: 'Annotations',
+            data: [
+            {{for m in sorted(markers):
+              if m.dateTime < firstDate or m.dateTime > lastDate: continue
+              shortName = m.title[:12]
+              fullName = "%s: %s - %s" % (FmtDate(m.dateTime), m.CATEGORY_TITLE, m.title)
+            }}
+            {
+              x: Date.UTC({{=m.dateTime.year}}, {{=(m.dateTime.month-1)}}, {{=m.dateTime.day}}),
+              title: '{{=shortName}}',
+              text: '{{=fullName}}',
+            }, 
+            {{pass}}
+            ],
+            onSeries: {{=XML("'mainseries'") if "percent" not in viewMode else "null"}},
+            shape: 'squarepin',
+            color: "#7788CC",
+            showInLegend: false,
+            lineWidth: 0,
+            fillColor : '{{="transparent" if "percent" not in viewMode else "white"}}',
+            style: {
+              "fontWeight": "normal",
+              "color" : "#4455BB"
+
+            }
+            }
+            ]
+        });
+    });
+$( document ).ready(function() {
+  $(".highcharts-scrollbar").hide()
+});
+</script>

@@ -1,0 +1,210 @@
+{{extend 'layout.html'}}
+
+<style>
+  .ui-autocomplete {
+    max-height: 300px;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    font-size: 12px;
+  }
+.allbutton {
+    padding: 0px 7px 0px 7px !important;
+}
+.selectcounternotice {
+    font-size: 12px;
+    color:#AAAAAA;
+}
+
+.longinput {
+    width:400px !important;
+}
+.configVals th {
+    font-size: 12px;
+    border-bottom:1px solid #999;
+}
+.configVals td {
+    font-size: 12px;
+    padding:0px 5px 0px 5px;
+}
+.hiddendiv {
+    display:none;
+}
+.check {
+    vertical-align: middle;
+}
+.formdiv {
+    width:500px;
+}
+</style>
+
+<script>
+function AddFromUrl(v)
+{
+    num = 0
+    if (!v || v == "") {
+        v = prompt("Enter Eve Metrics URL to parse")
+        if (v == null)
+            return
+    }
+    request = "num="+num+"&url="+encodeURIComponent(v)
+    lastXhr = $.getJSON("EditDigestParseUrl", request, function(data, status, xhr) {
+        err = data["error"];
+        if (err != "") {
+            alert(err);
+            return
+        }
+        num = data["num"];
+        contentType = data["contentType"];
+        contentConfig = data["contentConfig"];
+        contentConfigTable = data["contentConfigTable"];
+        $("#contentType").val(contentType);
+        $("#contentConfig").val(contentConfig);
+        $("#contentConfigTable").html(contentConfigTable);
+        $("#contentTypeInstructions").hide();
+        $("#contentTypeContainer").fadeIn(500);
+    });
+
+}
+function ViewContent(which) {
+    contentType = $("#contentType").val();
+    if ($("#headeronly").is(":checked")) {
+        contentType = "HEADER"
+    }
+    contentConfig = $("#contentConfig").val();
+    request = "contentType="+contentType+"&contentConfig="+encodeURIComponent(contentConfig)
+    lastXhr = $.getJSON("GetDigestSectionURL", request, function(data, status, xhr) {
+        if (data.indexOf("Error") == 0) {
+            alert(data);
+        } else if (which == 1) {
+            url = data[which]
+            //open(url, "sample");
+            w = $("#width").val()
+            h = $("#height").val()
+            zoom = $("#zoom").val()
+            if (w == "")
+                w = 700
+            if (h == "")
+                h = 400
+            url += "w=" + w + "&h=" + h
+            if (zoom != "" && zoom != 1.0)
+                alert("You have zoom level set. To replicate this you will need to adjust the zoom of the popup window accordingly");
+            options = 'toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no,width='+w+',height='+h
+            window.open(url,'targetWindow',options)
+        } else {
+            url = data[which]
+            window.open(url,'targetWindow')
+        }
+    });
+}
+function CheckHeader() {
+    if ($("#headeronly").is(":checked")) {
+        $("#contentTypeInstructions").hide();
+        $("#contentTypeContainer").hide();
+        $("#sectionDetails").hide();
+    } else {
+        {{if sectionID == 0:}}
+            $("#contentTypeInstructions").show();
+        {{else:}}
+            $("#contentTypeContainer").show();
+        {{pass}}
+        $("#sectionDetails").show();
+    }
+}
+</script>
+
+<h3><a href="Digests">Digests</a> > <a href="EditDigest?digestID={{=digestID}}">{{=digestName}}</a> > {{=["Edit Section", "Add New Section"][sectionID == 0]}}</h3>
+<form method="POST">
+<div class="formdiv">
+    <input id="position" name="position" type=hidden value="{{=(position or 0)}}">
+
+    <div class=formfieldname>Title</div>
+    <input type=text name="sectionTitle" value="{{=(sectionTitle or request.vars.name or "")}}" style="width:500px;">
+
+    <div class=formfieldname>Description (optional)</div>
+    <textarea id="description" name="description" style="width:500px; height:70px;">{{=description or ""}}</textarea>
+    <input type=checkbox name="headeronly" id="headeronly"{{if contentType == "HEADER": response.write(" Checked")}} OnChange="CheckHeader();"> <label for="headeronly">This is just a header</label>
+    <div id="contentTypeInstructions" class="{{if sectionID > 0: response.write("hiddendiv")}}">
+        <h4>To add your section you must follow these steps:</h4>
+        1. Go to the Eve Metrics page that you want to send out in email and set ip up how you want it to look.<br>
+        2. Copy the URL from your browser's address bar.<br>
+        3. Click <i><span class=link OnClick="AddFromUrl();">Add from URL</span></i> below and paste the URL.<br>
+        4. Add Title and additional config.<br>
+        5. Click "Save Section".
+    </div>
+    <div class=formfieldname>Template</div>
+    <select name="templateID">
+        <option value="">Default</option>
+        {{for t in templates:}}
+            <option value="{{=t.templateID}}"
+                {{if templateID == t.templateID: response.write(" Selected")}}
+                style="background-color:{{=t.backgroundColor}}; color:{{=t.color}}"
+            >{{=t.templateName}}</option>
+        {{pass}}
+    </select>
+
+    <div id="contentTypeContainer" class="{{if sectionID == 0: response.write("hiddendiv")}}">
+    <div class=formfieldname>Content Type</div>
+    <select name="contentType" id="contentType">
+    {{
+        contentTypes = [
+            ["NUMBER", "Latest Count"],
+            ["GRAPH", "Graph"],
+            ["DASHBOARD", "Dashboard"],
+            ["REPORT", "Day Report"],
+            ["DASHBOARDGRAPHS", "Dashboard Graphs"],
+        ]
+        for c in contentTypes:
+            s = ""
+            if c[0] == contentType: s = " Selected"
+            }}
+            <option value="{{=c[0]}}"{{=s}}>{{=c[1]}}</option>
+        {{pass}}
+    </select>
+    <div class=formfieldname>Content Config</div>
+    <input type="text" id="contentConfig" name="contentConfig" value="{{=contentConfigString}}" style="width:400px;display:none;">
+    <div id="contentConfigTable">
+        <table class="configVals"><tr><th>Key</th><th>Value</th></tr>
+        {{for c in (contentConfig or []):}}
+        <tr><td>{{=c[0]}}</td><td>{{=c[1]}}</td></tr>
+        {{pass}}
+        </table>
+    </div>
+    </div>
+    <div id="sectionDetails">
+    <div class=formfieldname>Requested Width (default 700, some elements might break out of small widths)</div>
+    <input type="text" id="width" name="width" value="{{=width or ""}}" style="width:60px;">
+    <div style="float:right;"><input type="checkbox" class="check" id="widthApplyToAll" name="widthApplyToAll"><label for="widthApplyToAll" class=normaltext>apply to all sections</label></div>
+
+    <div class=formfieldname>Height (only applies to graphs, default 400)</div>
+    <input type="text" id="height" name="height" value="{{=height or ""}}" style="width:60px;">
+    <div style="float:right;"><input type="checkbox" class="check" id="heightApplyToAll" name="heightApplyToAll"><label for="heightApplyToAll" class=normaltext>apply to all sections</label></div>
+
+    <div class=formfieldname>Zoom (default 1.0)</div>
+    <input type="text" id="zoom" name="zoom" value="{{=zoom or ""}}" style="width:60px;">
+    <div style="float:right;"><input type="checkbox" class="check" id="zoomApplyToAll" name="zoomApplyToAll"><label for="zoomApplyToAll" class=normaltext>apply to all sections</label></div>
+
+    </div>
+
+    <div style="padding-top:24px">
+    <input type=submit value="Save Section" style="height:34px;width:160px;">
+    </div>
+
+    <input type=hidden name="duplicate" value="{{=request.vars.duplicate or ""}}">
+</div>
+</form>
+<div style="padding-top:18px">
+<span class="link" OnClick="AddFromUrl();">Add from URL</span> &middot; 
+{{if sectionID > 0:}}
+<a href="EditDigestSection?digestID={{=digestID}}&sectionID={{=sectionID}}&duplicate=1">Duplicate Section</a> &middot; 
+{{pass}}
+<span class="link" OnClick="ViewContent(0);">View Sample Page</span> &middot; 
+<span class="link" OnClick="ViewContent(1);">View Sample Embedded View</span>
+</div>
+
+<script type="text/javascript">
+{{if request.vars.addFromUrl:}}
+AddFromUrl('{{=request.vars.addFromUrl}}')
+{{pass}}
+
+CheckHeader();
+</script>

@@ -1,0 +1,78 @@
+{{extend 'layout.html'}}
+{{def DayName(wd):
+    days = ('', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
+    return days[wd]
+pass
+}}
+<div class=addbuttondiv><a href="EditDigest?digestID=0" class=button><img src="{{=URL("static/images/add2.png")}}" style="vertical-align:middle; height:14px;"> <span style="line-height:22px;">Add new digest</span></a></div>
+
+<h3>Digests</h3>
+{{if session.userName:}}
+<a href="Digests" {{if not request.vars.all and request.vars.which != "2": response.write(XML(" style=\"font-weight:bold; color:black;\""))}}>My Subscriptions</a>
+ &middot; 
+<a href="Digests?which=2" {{if (request.vars.which == "2"): response.write(XML(" style=\"font-weight:bold; color:black;\""))}}>My Digests</a>
+ &middot; 
+<a href="Digests?all=1" {{if request.vars.all: response.write(XML(" style=\"font-weight:bold; color:black;\""))}}>All Digests</a>
+{{pass}}
+<div style="float:right;"><input type="search" placeholder="filter" id="filterinput" class="normaltext"></div>
+<table class="zebra datatable tablesorter">
+<thead>
+    <tr>
+        <th>ID</th>
+        <th>Digest Name</th>
+        <th>User</th>
+        <th>Created</th>
+        <th>Recipients</th>
+        <th>Schedule</th>
+        <th>Sections</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+<tbody>
+{{for digestID, digest in digests.iteritems():
+    restr = IsRestricted("DIGEST", digestID)
+    if restr: continue}}
+    <tr>
+        <td>{{=digestID}}</td>
+        <td><a href="ViewDigest?digestID={{=digestID}}">{{=(digest.digestName or "Unnamed")}}</a>
+            {{if restr is not None: response.write(XML("<img src=\"%s\">" % URL("static/images/lock.png")))}}
+            {{if digest.disabled: response.write(XML("<div style=\"float:right;\"><font color=crimson>disabled</font></div>"))}}
+        </td>
+        <td>{{=digest.userName}}</td>
+        <td><nobr>{{=FmtDate(digest.createDate)}}</nobr></td>
+        <td>{{=digest.numEmails}}</td>
+        <td>
+            {{if digest.scheduleType == "DAY": 
+                response.write("Daily")
+            elif digest.scheduleType == "WEEK": 
+                response.write("Every %s" % DayName(digest.scheduleDay))
+            elif digest.scheduleType == "MONTH":
+                response.write("%s. of the month" % digest.scheduleDay)
+            pass}}
+        </td>
+        <td>{{=digest.numSections}} / {{=digest.numAlerts}}</td>
+        <td>
+            <a href="SendDigest?digestID={{=digestID}}&email={{=session.userName}}@ccpgames.com">send to me</a> &middot; <a href="EditDigest?digestID={{=digestID}}">edit digest</a>
+            
+        </td>
+    </tr>
+{{pass}}
+</tbody>
+</table>
+
+
+<script>
+$(document).ready(function() {
+$(".tablesorter").tablesorter({sortList: [[1,0]]}); 
+    $(".tablesorter").bind("sortEnd",function() { 
+        $(".zebra tr:even").removeClass("alt");
+        $(".zebra tr:odd").addClass("alt");
+    }); 
+
+
+    $('.tablesorter').filterTable({ // apply filterTable to all tables on this page
+        quickList: [], // add some shortcut searches
+        filterSelector: '#filterinput'
+    });
+});
+</script>

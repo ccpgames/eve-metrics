@@ -1,0 +1,41 @@
+{{extend 'layout.html'}}
+<h3>
+    {{=WriteStar(starred)}}
+    <span style="color:gray;">Dashboard:</span> {{=dashboardName}}
+    <span style="color:#AAAAAA" class=normaltext>(<a href="EditDashboard?dashboardID={{=dashboardID}}" style="color:#AAAAAA">edit</a>)</span>
+    <div style="float:right" class=slightlybigtext><a href="Dashboard?dashboardID={{=dashboardID}}">View Dashboard</a></div>
+</h3>
+<style>
+.collul { list-style-type: none; margin: 0; padding: 0; margin-bottom: 10px; }
+.collection {
+    //border:2px solid green;
+    width:980px;
+    background-color:white;
+    margin: 5px; 
+    padding: 5px;
+}
+
+</style>
+
+
+<ul class=collul>
+    {{for c in collectionIDs:
+        if c not in collections or collections[c].dynamicCounterID: continue}}
+        <li id="collection_{{=c}}" class=collection>
+        <h3>{{=collections[c].groupName}} / <a href="Counters?collectionID={{=c}}">{{=collections[c].collectionName}}</a></h3>
+            <center>
+            <iframe class=bla height=390 width=950 src="CustomGraph?height=300&collectionID={{=c}}" frameBorder="1" scrolling="no"></iframe>
+            </center>
+        </li>
+    {{pass}}
+</ul>
+
+{{pass}}
+<br><a class="smallbutton" OnClick="ShowAddToDigest();">Add to Digest...</a>
+<script>
+function ShowAddToDigest(all)
+{
+    LoadAddToContainer("digest", "Dashboard", "", all);
+}
+</script>
+<div id="addtoparentcontainer" style="display:none;"></div>

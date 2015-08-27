@@ -1,0 +1,42 @@
+{{extend 'layout.html'}}
+
+<style>
+
+#loginform {
+	margin:50px;
+	text-align:center;
+}
+
+#loginform input[type=password] {
+	font-size:20px;
+}
+
+#loginform input[type=submit] {
+	font-size:16px;
+}
+
+</style>
+{{if not session.admin:}}
+	<div id=loginform>
+	<form method=POST action=Admin>
+	<center><h3>Enter the {{=SITE_TITLE}} admin password to continue</h2></center><br>
+	<input type=password name=adminPassword value=""> <input type=submit value="Continue">
+	<input type=hidden name=redirect value="{{=redirect or "/Admin"}}">
+	</form>
+	</div>
+
+	{{if error:}}
+	<div class=error><b>{{=error}}</b></div>
+	{{pass}}
+{{else:}}
+<h3>Select an admin function</h3>
+<ul>
+{{for v in functions:
+	if len(v) > 1:}}
+		<li><a href="{{=v[0]}}">{{=v[1]}}</a></li>
+	{{else:}}
+		</ul><ul>
+	{{pass
+pass}}
+</ul>
+{{pass}}

@@ -1,0 +1,46 @@
+{{extend 'layout.html'}}
+<h3>Manage groups</h3>
+
+
+<table id=ordertable class="zebra datatable">
+<tr class="nodrop nodrag">
+<th>&nbsp;</th><th>Group Name</th><th>Counters</th><th>Collections</th><th>&nbsp;</th>
+</tr>
+
+{{for group in groups:}}
+<tr id="cc_{{=group.groupID}}" style="border-bottom:0px solid #779999;">
+<td style="background-image:url('static/images/gripblue2.png'); background-repeat:no-repeat; background-position:center;"></td>
+<td>{{=group.groupName}}</td>
+<td><a href="Reports?groupID={{=group.groupID}}">{{=group.numCounters or 0}}</a></td>
+<td><a href="Collections?groupID={{=group.groupID}}">{{=group.numCollections or 0}}</a></td>
+<td style="text-align:right; width:1%"><nobr>
+<a href="EditGroup?groupID={{=group.groupID}}">edit</a>
+ &middot;
+ <a href="RemoveGroup?groupID={{=group.groupID}}" OnClick="return confirm('Are you sure you want to remove this group?');">remove</a></td>
+</tr>
+{{pass}}
+</table>
+<a href="EditGroup?groupID=0">Add Group</a>
+<script>
+$(document).ready(function() {
+	$("#ordertable").tableDnD({
+	    onDragClass: "dragging",
+	    onDrop: function(table, row) {
+            var rows = table.tBodies[0].rows;
+            ids = ""
+            for (var i=0; i<rows.length; i++) {
+            	var idd = rows[i].id;
+            	if (idd.indexOf("_") >= 0)
+	                ids += idd.split("_")[1]+",";
+            }
+	        $("#ordertable tr:even").addClass('alt');
+	        $("#ordertable tr:odd").removeClass('alt');
+	        url = "OrderGroupsDragDrop?order=" + ids
+	        $.getScript(url);
+	    },
+		onDragStart: function(table, row) {
+
+		}
+	});
+});
+</script>

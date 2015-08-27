@@ -1,0 +1,163 @@
+{{def WriteDigestSelector():}}
+	<select name=digestID id=digestID style="width:260px;">
+	<option value="">Select a digest...</option>
+	<!--<option value=0>Create a new digest</option>-->
+	{{for digest in sorted(digests.itervalues(), key=operator.attrgetter("digestName")):}}
+	<option value={{=digest.digestID}}>{{=digest.digestName}} - {{=digest.userName}}</option>
+	{{pass}}
+	</select>
+{{pass}}
+
+{{def WriteColumnSelector(includeAll=False):}}
+	{{if columns:}}
+		<select id="columnID" style="width:120px;">
+		{{if includeAll:}}
+			<option value="0">All Columns</option>
+		{{pass}}
+		{{for c in columns:}}
+			<option value="{{=c.columnID}}">{{=c.columnName}}</option>
+		{{pass}}
+		</select>
+	{{else:}}
+	<input type=hidden id="columnID" value="0">
+	{{pass}}
+{{pass}}
+
+{{if which == "collection":}}
+	<div id=addtocollection class="addtocontainer">
+
+	{{if page == "Report":}}
+		<div class="addtoheader">Add checked rows into collection</div>
+		<select id="collectionID" style="width:300px;">
+		<option value="">Select collection...</option>
+		<option value=0>Create a new collection</option>
+		{{for c in sorted(collections.itervalues(), key=operator.attrgetter("collectionName")):}}
+		<option value={{=c.collectionID}}>{{=c.groupName or "Ungrouped"}} - {{=c.collectionName}}</option>
+		{{pass}}
+		</select>
+		{{WriteColumnSelector()}}
+		<input type=button value="Add selected to collection" OnClick="AddToCollection();">
+		<script>
+		function AddToCollection() {
+			{{if not session.userName:}}
+			alert('You need to log in to add to a collection');
+			return
+			{{pass}}
+			var counterID = {{=counterID}};
+			var collectionID = $("#collectionID").val();
+			var name = "";
+			if (collectionID == 0) {
+				name = prompt("What do you want to name your collection?", "My new collection")
+				if (name == null)
+					return;
+			}
+			url = "AddToCollection?collectionID=" + collectionID + "&name=" + name + "&";
+			g = ""
+			var subjectID = $("#columnID").val();
+			var lst = GetSelected([subjectID]);
+			if (lst.length == 0)  {
+				alert("Select some rows first.");
+				return
+			}
+			for (i = 0; i < lst.length; i++)
+				g += "counter=" + selLst[i][0] + "_" + selLst[i][1] + "_" + selLst[i][2] + "&"
+			url += g
+			window.location.href = url;
+		}
+		</script>
+	{{else:}}
+		Page type {{=page}} not supported.
+	{{pass}}
+	<br>
+	<span class="link normaltext" OnClick="ShowAddToCollection(1);">view all</span>
+	</div>
+{{pass}}
+
+{{if which == "digest":}}
+	<div id=addtodigest class="addtocontainer">
+	<div class="addtoheader">Add this page into digest: {{=request.vars.title}}</div>
+	{{WriteDigestSelector()}}
+	<input type=submit name=graph value="Add page to digest" OnClick="AddPageToDigest();">
+	<br>
+	<span class="link normaltext" OnClick="ShowAddToDigest(1);">view all</span>
+
+	</div>
+	<script>
+	function ChooseReport() {
+		$("#choosers").hide();
+		$("#chooseReportDiv").show();
+	}
+	function ChooseGraphs() {
+		$("#choosers").hide();
+		$("#chooseGraphsDiv").show();
+	}
+	function AddPageToDigest() {
+		{{if not session.userName:}}
+		alert('You need to log in to add to a digest');
+		return
+		{{pass}}
+		var digestID = $("#digestID").val();
+		var name = "{{=(request.vars.title or "")}}"
+		if (digestID == 0) {
+			var v = confirm("You must create a digest before you can add to it. Go to the digest creation page?");
+			if (v) {
+				window.location.href = "EditDigest?digestID=0"
+			}
+			return;
+		}
+		fullUrl = document.URL;
+		url = "EditDigestSection?digestID=" + digestID + "&sectionID=0&name=" + name + "&addFromUrl=" + encodeURIComponent(fullUrl)
+		window.location.href = url
+	}
+	</script>
+{{pass}}
+
+{{if which == "alert":}}
+	<div id=addtoalert class="addtocontainer">
+	<div class="addtoheader">Add alert for report</div>
+	{{WriteDigestSelector()}}
+	{{WriteColumnSelector(True)}}
+	<select id="whichRows">
+		<option value="1">All keys</option>
+		<option value="2">Checked key (only one)</option>
+	</select>
+	<input type=submit name=graph value="Create Alert" OnClick="AddReportToAlert();">
+	<br>
+	<span class="link normaltext" OnClick="ShowAddToAlert(1);">view all</span>
+
+	</div>
+	<script>
+	function AddReportToAlert() {
+		{{if not session.userName:}}
+		alert('You need to log in to add to a digest');
+		return
+		{{pass}}
+		var name = "";
+		var digestID = $("#digestID").val();
+		if (digestID == 0) {
+			var v = confirm("You must create a digest before you can add to it. Go to the digest creation page?");
+			if (v) {
+				window.location.href = "EditDigest?digestID=0"
+			}
+			return;
+		}
+		var columnID = $("#columnID").val();
+		var whichRows = $("#whichRows").val();
+		keyID = 0;
+		if (whichRows == "") {
+			alert("You must choose whether to watch all the rows or just one");
+			return;
+		} else if (whichRows == 2) {
+			var lst = GetSelected([columnID]);
+			if (lst.length != 1) {
+				alert("Please choose one key to report on");
+				return;
+			}
+			keyID = lst[0][2];
+		}
+
+		url = "EditDigestAlert?digestID=" + digestID + "&alertID=0&columnID=" + columnID + "&keyID=" + keyID + "&counterID={{=counterID}}";
+		window.location.href = url
+	}
+	</script>
+{{pass}}

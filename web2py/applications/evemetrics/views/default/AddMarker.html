@@ -1,0 +1,112 @@
+{{extend 'layout.html'}}
+{{
+	title = ""
+	description = ""
+	url = ""
+	import datetime
+	dateTime = FmtDate(datetime.datetime.now())
+	hour = "00"
+	minute = "00"
+	categoryID = 0
+	markerType = markerTypes.get(typeID, None)
+	important = 0
+	if marker:
+		title = marker.title
+		description = marker.description
+		categoryID = int(marker.categoryID or 0)
+		url = marker.url
+		dateTime = FmtDate(marker.dateTime)
+		hour = marker.dateTime.hour
+		minute = marker.dateTime.minute
+		important = marker.important
+	pass
+	typeTitle = ""
+	includeTime = False
+	isPersonal = False
+	if markerType:
+		typeTitle = markerType.title
+		includeTime = markerType.includeTime
+		isPersonal = (markerType.productID == 5)
+	pass
+}}
+{{if not typeID:}}
+<h3>Pick event type to add</h3>
+{{for typeID, markerType in markerTypes.iteritems():}}
+<h4><a href="?typeID={{=typeID}}">{{=typeTitle}}</a></h4>
+{{pass}}
+{{else:}}
+<h3>{{="Add event to" if not markerID else "Edit event in"}} {{=typeTitle}}</h3>
+<style>
+.formfieldname {
+	color:gray;
+	font-size:12px;
+	padding-top:5px;
+}
+</style>
+
+<form method=post action=AddMarker>
+<input type=hidden id=typeID name=typeID value="{{=typeID}}">
+<input type=hidden id=markerID name=markerID value="{{=markerID or ""}}">
+<div class=formfieldname>Title</div>
+<input type=text id=title name=title value="{{=title}}" style="width:300px;">
+
+{{if not isPersonal:}}
+<div class=formfieldname>Category</div>
+	<select name=categoryID style="width:300px;">
+	<option value=0>Select Category...</option>
+	{{for cid, category in categories.iteritems():
+		s = ""
+		if cid == categoryID: s = " Selected"}}
+		<option value="{{=cid}}"{{=s}}>{{=category.title}}</option>
+	{{pass}}
+	</select>
+{{pass}}
+<div class=formfieldname>Description (optional)</div>
+	<textarea id=description name=description style="width:500px; height:150px;">{{=description or ""}}</textarea>
+<div class=formfieldname>Link (optional)</div>
+	<input type=text id=url name=url value="{{=url or ""}}" style="width:500px;">
+<div class=formfieldname>Date</div>
+	<input name="dateTime" id="dateTime" value="{{=dateTime or ""}}" >
+{{if includeTime:}}
+	<input name=dateTime_hour id=dateTime_hour value="{{=hour}}" style="width:20px;"> :
+	<input name=dateTime_minute id=dateTime_minute value="{{=minute}}" style="width:20px;">
+{{pass}}
+{{if not isPersonal:}}
+<div title="This is an event of particular importance to CCP (expansion for example)">
+<div class=formfieldname><label for=important>Important</label></div>
+<input name="important" id="important" type=checkbox value="1" {{if important: response.write("checked")}}>
+</div>
+{{pass}}
+{{for markerColumnID, col in markerTypeColumns.iteritems():
+	n = "markerColumnID_%s" % markerColumnID
+	v = ""
+	vv = markerColumnValues.get(markerColumnID)
+	if vv: v = vv.value}}
+		
+	{{if col.type == 1:}}
+		<div class=formfieldname><label for="{{=n}}">{{=col.title}}</label></div>
+		<input type=text id="{{=n}}" name="{{=n}}" value="{{=v}}">
+	{{elif col.type == 2:
+		c = ""
+		if v == "1": c = " Checked"}}
+		<div class=formfieldname><input type=checkbox name={{=n}} id={{=n}}{{=c}} value=1> <label for="{{=n}}">{{=col.title}}</label></div>
+	{{pass}}
+{{pass
+c = "Create Event"
+if markerID:
+	c = "Edit Event"
+pass}}
+<div style="padding-top:16px;"><input type=submit value="{{=c}}"></div>
+
+</form>
+
+<script>
+$(function() {
+    $('#dateTime').datepicker( {
+        changeMonth: true,
+        changeYear: true,
+        dateFormat: "yy-mm-dd"
+    });
+});
+</script>
+{{pass}}

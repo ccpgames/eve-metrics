@@ -1,0 +1,297 @@
+{{extend 'layout.html'}}
+
+{{if name <= 0:}}
+<h3>Enter some characterID's or something</h3>
+{{else:}}
+<h3>Statistics for {{=name}}</h3>
+{{pass}}
+{{if latestDate:}}
+<h6>Latest stats are from {{=latestDate}}</h6>
+{{pass
+if request.vars.uselist or request.vars.which or ("idList" in globals() and idList) or name <= 0:}}
+<form method=get>
+<textarea name=idlist>{{=",".join([str(i) for i in idList]) or ""}}</textarea><br>
+<select name=which>
+{{lst = "userID", "charID", "corporationID", "allianceID"
+for l in lst:
+	s = ""
+	if l == request.vars.which: s = "Selected"}}
+	<option value="{{=l}}" {{=s}}>{{=l}}</option>
+{{pass}}
+</select>
+<br><input type=submit value=Go>
+</form>
+{{pass}}
+{{
+cols = """
+*** Primary Information ***
+userAge
+userLogonCount|delta
+userLogonMinutes|delta
+numAFK
+amountAFK
+characterAge
+characterLogonCount|delta
+characterLogonMinutes|delta
+
+amountAur
+amountCash
+amountLP
+
+numCharacterSelect
+numOnSkillTrained
+numSkillPoints|delta
+numSkillsInQueue
+numFreeSkillsPoints
+
+*** PVE ***
+numShipDeaths_NPC
+numKill_NPC
+numMissionsOffered
+numMissionsDeclined
+numMissionsAccepted
+numMissionsSucceeded
+numMissionsFailed numMissionsQuit
+numDamaged_NPC
+numShotsDamaged_NPC
+amountDamaged_NPC
+numBounties
+numDungeonsEntered
+numDungeonsCompleted
+numActivateAccelerationGate
+numWarpScrambled_NPC
+numWebified_NPC
+
+*** Business ***
+numPlaceCharOrderBuy numPlaceCharOrderSell
+amountPlaceCharOrderBuy amountPlaceCharOrderSell
+numBuyOrders|delta
+amountBuyOrders|delta
+quantityBuyOrders|delta
+numSellOrders|delta
+amountSellOrders|delta
+quantitySellOrders|delta
+numModifyCharOrder
+numCancelCharOrder
+
+*** Industry ***
+numActivatedModules_Mining
+amountMineAsteroid amountMineAsteroid_Drone
+numMineAsteroid numMineAsteroid_Drone
+
+*** Travel ***
+numWarp_Bookmark numWarp_Char numWarp_Item numWarp_Scan
+numWarps_High numWarps_Low numWarps_Null numWarps_Wormhole
+distanceWarped
+numJumps_High numJumps_Low numJumps_Null numJumps_Wormhole
+numFinishWormholeJumping
+numDocks_High numDocks_Low numDocks_Null
+numFollowBall numOrbit
+
+*** Modules ***
+numActivatedModules_EnergyWeapon numActivatedModules_HybridWeapon numActivatedModules_MissileLauncher numActivatedModules_ProjectileWeapon
+numActivatedModules_HighSlot numActivatedModules_MediumSlot numActivatedModules_LowSlot numActivatedModules_OtherSlot
+numActivatedModules_Repair
+numActivatedModules_Afterburner
+numActivatedModules_Logistics numActivatedModules_Ewar
+numActivatedModules_NoTarget numActivatedModules_Target
+numAddTargets
+numDogmaActivate numDogmaDeactivate
+numLinkWeapons
+numOverload
+
+*** PvP ***
+numShipDeaths_Player
+numShipKills_High numShipKills_Low numShipKills_Null numShipKills_Wormhole
+numPodKills_High numPodKills_Low numPodKills_Null numPodKills_Wormhole
+numCauseDamage_Player
+amountCauseDamage_Player_High amountCauseDamage_Player_Low amountCauseDamage_Player_Null amountCauseDamage_Player_Wormhole
+numShipDeaths_High numShipDeaths_Low numShipDeaths_Null numShipDeaths_Wormhole
+numPodDeaths_High numPodDeaths_Low numPodDeaths_Null numPodDeaths_Wormhole
+numDamaged_Player
+numShotsDamaged_Player
+amountDamaged_Player
+numSelfDestruct
+numWarpScrambled_Player
+numWebified_Player
+
+*** Social ***
+numContactsFrom numContactsTo|delta
+numFleetAcceptInvite
+numFleetEvents
+
+*** Exploration ***
+numConeScan
+numRequestScans
+numSalvaging_Success
+numHacking_Success numArcheology_Success
+
+*** Drones ***
+numDrop
+numDroneCmdEngage
+numDroneDeaths
+
+*** Activity ***
+numEventLogEvents
+numItemCreatedEvents
+"""
+userIDs = [3431903, 5173076, 2216659, 6783913, 2544017, 322235, 1884601, 6470138, 5299015, 3984014, 2875109, 8148655, 298539, 716570, 509104, 5335117, 1424627, 739643, 487967, 4802593, 4362397, 1666679, 2061064, 1480936, 3190944, 1168227, 1474019, 1305037, 8532940, 8038086, 7413828, 7223889]
+c = 0
+p = 0
+n = 0
+for i, u in enumerate(userIDs):
+	if u == int(request.vars.userid or 0):
+		c = u
+		if i > 0:  p = userIDs[i-1]
+		try:
+			n = userIDs[i+1]
+		except:
+			n = 0
+		break
+	pass
+pass
+if p: response.write(XML("<a href=\"CharStats?userid=%s\">%s</a> < " % (p, p)))
+response.write("%s" % c)
+if n: response.write(XML(" > <a href=\"CharStats?userid=%s\">%s</a>" % (n, n)))
+serverNumber = 0
+def GetStats(typeName, delta=False):
+	statsByDate = statsByType.get(typeName, {})
+	d  = ""
+	m = 0
+	keys = statsByDate.keys()
+	keys.sort()
+	lastVal = None
+	for dt in keys:
+		s = statsByDate[dt]
+		s = s or 0
+		if typeName == "amountCash":
+			s = s/1000000
+		pass
+		s2 = 0
+		if delta:
+			if lastVal:
+				s2 = s-lastVal
+			else:
+				s2 = 0
+			pass
+		pass
+		lastVal = s
+		if delta: s = s2
+		d += "%s," % s
+		try:
+			m = max(m, int(s))
+		except:
+			pass
+	pass
+	if m: m = int(m*1.1)
+	if d: d = d[:-1]
+	return d, m
+pass
+
+def WriteStats(typeNames, minor=[], title=None, delta=False):
+	if type(typeNames) != type([]): typeNames = [typeNames]
+	if "amountCash" in typeNames: title = "Cash [millions]"
+	maxVal = 0
+	allData = ""
+	for typeName in typeNames:
+		d, m = GetStats(typeName, delta)
+
+		maxVal += m
+		if d: allData += d + "|"
+	pass
+	if not maxVal:
+		response.write(XML("<font color=gray class=normaltext>%s = 0</font><br>" % ", ".join(typeNames)))
+		return
+	allData = allData[:-1]
+	legend = ""
+	if len(typeNames) > 1:
+		for t in typeNames:
+			if t: legend += "%s|" % (t.split("_")[-1])
+		pass
+		legend = legend[:-1]
+	pass
+	t = title or ", ".join(typeNames)
+	if delta: t += " [delta]"
+	WriteChart(allData, t, maxVal, 900, 160, legend=legend)
+	if minor: response.write(XML("<br>"))
+	for mi in minor:
+		d, m = GetStats(typeName + "_" + mi)
+		if not m:
+			d, m = GetStats(mi)
+		pass
+		WriteChart(d, mi, m, int(900/len(minor)), 100)
+	pass
+	response.write(XML("<br><hr>"))
+pass
+
+def WriteChart(data, title, maxVal, width, height, legend=""):
+	global serverNumber
+	if legend: legend = "&chdl=%s" % legend
+	days = ""
+	l = len(data.split("|")[0].split(","))
+	cols = "3072F3,49188F,AA0033,A96B0E"
+	if len(data.split("|")) == 1: cols = "338033"
+	for i in xrange(l):
+		k = (i-l)
+		if k % 2 == 0: k = ""
+		if k == -1 and width > 600: k = "yesterday"
+		days += "%s|" % k
+	pass}}
+	<img src="http://{{=serverNumber}}.chart.apis.google.com/chart?chxl=1:|{{=days}}|&chxr=0,0,{{=maxVal}}&chxt=y,x&chbh=a&chs={{=width}}x{{=height}}&cht=bvs&chco={{=cols}}&chd=t:{{=data}}&chtt={{=title}}&chds=0,{{=maxVal}}{{=legend}}">
+	{{serverNumber += 1
+	if serverNumber > 9: serverNumber = 0
+pass}}
+
+{{if request.vars.all:
+	skip = "characterName,,currentShipID,date,numContractsAccepted,numContractsCreated,userStatus,userType".split(",")
+	keys = statsByType.keys()
+	keys.sort()
+	for k in keys:
+		if not request.vars.s or request.vars.s in k:
+			if k not in skip and "ID" not in k and "time" not in k.lower():
+				response.write(k)
+				WriteStats(k)
+			pass
+		pass
+	pass}}
+{{elif 1:
+for c in cols.split("\n"):
+	if c.startswith("***"):
+		response.write(H3(c.replace("***", "")))
+	elif c:
+		delta = False
+		lst = c.split("|")
+		if len(lst) > 1 and lst[1] == "delta": delta=True
+		ccc = lst[0]
+		cc = ccc.split(" ")
+		WriteStats(cc, delta=delta)
+	pass
+
+pass}}
+{{else:}}
+{{WriteStats(["numDocks_High", "numDocks_Low", "numDocks_Null"], title="Docks by security")}}
+{{WriteStats(["numWarps_High", "numWarps_Low", "numWarps_Null", "numWarps_Wormhole"], title="Warps by security")}}
+{{WriteStats(["amountCauseDamage_Player_High", "amountCauseDamage_Player_Low", "amountCauseDamage_Player_Null", "amountCauseDamage_Player_Wormhole"], title="Damage to other players")}}
+{{WriteStats(["amountDamaged_Player"], title="Damage other players caused me")}}
+{{WriteStats(["amountDamaged_NPC"], title="Damage NPC's caused me")}}
+{{WriteStats(["numShipDeaths_High", "numShipDeaths_Low", "numShipDeaths_Null", "numShipDeaths_Wormhole"], title="My losses")}}
+{{WriteStats(["numShipKills_High", "numShipKills_Low", "numShipKills_Null", "numShipKills_Wormhole"], title="My kills")}}
+
+{{WriteStats(["numActivatedModules_MissileLauncher", "numActivatedModules_ProjectileWeapon", "numActivatedModules_HybridWeapon", "numActivatedModules_EnergyWeapon"], minor=["numActivatedModules_Ewar", "numActivatedModules_Logistics", "numActivatedModules_Repair"], title="Activated Weapons")}}
+{{WriteStats("distanceWarped", title="Distance Warped [AU]")}}
+{{WriteStats("numConeScan", title="Directional Scanner activations")}}
+
+{{WriteStats("numDogmaActivate", title="Module Activations")}}
+{{WriteStats("numDogmaDeactivate", title="Module Deactivations")}}
+
+{{WriteStats("numDroneCmdEngage", title="Drone attack commands")}}
+
+{{WriteStats("numAddTargets", title="Targets added")}}
+
+{{WriteStats("numMineAsteroid", minor=["amountMineAsteroid", "numMineAsteroid_Drone", "amountMineAsteroid_Drone"], title="Cycles of Asteroid mining")}}
+
+{{WriteStats("numKill_NPC", title="Killed NPCs")}}
+
+
+{{WriteStats("characterLogonMinutes", title="Character Logon Minutes", delta=1)}}
+{{pass}}

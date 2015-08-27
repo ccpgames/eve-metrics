@@ -1,0 +1,336 @@
+{{extend 'layout.html'}}
+
+{{def WriteFieldName(name, help):
+	img = "<img src=\"%s\" class=\"tt middleimg\" title=\"<div class=normaltext>%s</div>\">" % (URL("static/images/help2.png"), help)
+
+	out = "<table width=430 class=formfieldtable><tr><td class=formfieldname>%s</td><td align=right width=\"1%%\">%s</td></tr></table>" % (name, img)
+	response.write(XML(out))
+pass
+
+helpName = "This is the name of your counter. Please see what the other counters look like so that you pick something that fits with the rest. This can be changed at any time."
+
+helpGroup = "This is the group where the reports from this counter will be shown under.<br>You can change this at any time and it's only for display purposes."
+
+helpParent = "This is the counter under which to group this counter.<br>This is optional and is only for display purposes."
+
+helpSubjectLookupTable = "Here you specify the lookup table to use for your counter's <i>subject</i>.<br>If you do not specify a lookup table here you will not use the subject.<br>Your counter can have a subject and a key or just a key. The subject can either be from the lookup table (if it is a solarsystem, character name, etc) or it can be multiple column names that you specify.<br>In the latter case the report will have multiple counts for each key."
+
+helpMultiColumns = "This allows you to have a report with multiple counts per row. See Accounting / Entries for an example of such a report. Note that if you use multiple count columns you cannot have a subject and key, it replaces the subject.<br>The description is optional but a few well spoken words there go a long way in explaining what the number is about."
+
+helpKeyLookupTable = "Here you specify the lookup table to use for your counter's <i>key</i>.<br>If you have a subject you must also have a key but it is very typical to have a key without a subject.<br>The key always needs to read from a lookup table (solarsystem, character name, etc)."
+
+helpSubjectID = "If you specify a subject lookup table your subjectID is typically the name of the value in that table (for example characterID or solarSystemID).<br>Your subjectID should be empty if you do not specify a subject lookup table. "
+
+helpKeyID = "If you specify a key lookup table your keyID is typically the name of the value in that table (for example characterID or solarSystemID).<br>Your keyID should be empty if you do not specify a key lookup table. "
+
+helpSourceType = "This represents the source of your data. DB means that it comes from a SQL Server database, typically ebs_METRICS. This needs to be correct for the automatic populating system to be able to do its stuff."
+
+helpSource = "When source type is 'database' this is the full name of the primary table that the counter is reading from (for example zaccounting.entries)<br>This value is not used directly except for displaying purposes.<br> Then source type is 'Doob Job' this is the name of the Doob Job and is used when rerunning those jobs so you will need to fill it out properly."
+
+helpProcName = "This is the name of the proceedure which populates this counter.<br>The name should be data.XXX and you need to add that proc to the ebs_METRICS database once you have created this counter.<br>You will need to start up SQL manager and connect to the researchDB on IP 10.200.42.1 with your windows credentials in order to do this."
+
+helpProcOrder = "This dictates the order in which the proc is executed (only for database counters). You rarely need to change this from the default."
+
+helpIdentifier = "This is a unique identifier for your counter. You should use this identifier in your SQL Procs or DoobJobs instead of the ID by using the SQL function zmetric.Counters_ID('IDENTIFIER').<br>You should call your identifier eve/core/dust.[scope].[yourname]. Typically it will be something like eve.eventLog.starbaseWarps or eve.user.logons"
+}}
+{{if counterID > 0:}}
+<h3>Edit counter <a href="Report?counterID={{=counterID}}"><font color=brown>{{=(counterID or "")}}</font></a></h3>
+{{else:}}
+<h3>Add new Counter</h3>
+{{pass}}
+<style>
+.formfieldname {
+	color:gray;
+	font-size:12px;
+	padding-top:5px;
+	width:320px;
+}
+.formfieldtable td {
+	padding:0px;
+	margin:0px;
+}
+.formfieldtable {
+	margin-top:4px;
+}
+
+input[type="text"], input[type="password"] {
+    width: 420px;
+}
+select {
+    width: 430px;
+}
+</style>
+
+<form method=post action=EditCounter OnSubmit="return CheckSubmit();">
+<input type=hidden name=counterID value="{{=counterID}}">
+{{WriteFieldName("Name", helpName)}}
+<input type=text name=name id=name value="{{=name}}">
+{{WriteFieldName("Identifier (<span class=link OnClick=\"SuggestIdentifier();\">suggest from name and group</span>)", helpIdentifier)}}
+<input type=text name=counterIdentifier id=counterIdentifier value="{{=counterIdentifier}}"> <span OnClick="ViewCounters();" class="link smallertext">View all</span>
+<input type=hidden name=origCounterIdentifier id=origCounterIdentifier value="{{=counterIdentifier}}">
+
+{{WriteFieldName("Group", helpGroup)}}
+	<select name=groupID id=groupID>
+	<option value=0>Select Group...</option>
+	{{for group in groups:
+		s = ""
+		if group[0] == groupID: s = " Selected"}}
+		<option value="{{=group[0]}}"{{=s}}>{{=group[1]}}</option>
+	{{pass}}
+	</select>
+{{WriteFieldName("Parent Counter", helpParent)}}
+	<select name=parentCounterID>
+	<option value=0>No parent</option>
+	{{if request.vars.parentCounterID:
+		parentCounterID = int(request.vars.parentCounterID)
+	pass
+	countersByName = {}
+	for cID, c in counters.iteritems():
+		countersByName["%s - %s (%s)" % (c.groupName, c.counterName, cID)] = cID
+	pass
+	keys = countersByName.keys()
+	keys.sort()
+	for k in keys:
+		cID = countersByName[k]
+		s = ""
+		if cID == parentCounterID: s = " Selected"}}
+		<option value="{{=cID}}"{{=s}}>{{=k}}</option>
+	{{pass}}
+	</select>
+{{WriteFieldName("Subject lookup table", helpSubjectLookupTable)}}
+	<select name=subjectLookupTableID id=subjectLookupTableID OnChange="OnSubjectLookupTableChanged();">
+	<option value=0>No lookup table</option>
+	<option value=-1{{if (subjectLookupTableID or 0) < 0: response.write(" Selected")}}> * Multiple count columns * </option>
+	{{for cID, c in lookupTables.iteritems():
+		s = ""
+		if cID == subjectLookupTableID: s = " Selected"}}
+		<option value="{{=cID}}"{{=s}}>{{=c.lookupTableName}} ({{=cID}})</option>
+	{{pass}}
+	</select>
+	<span OnClick="ViewLookupTable('subjectLookupTableID');" class="link smallertext">View table</span>
+<div id=subjectidname>
+{{WriteFieldName("subjectID name", helpSubjectID)}}
+<input type=text name=subjectID value="{{=subjectID or ""}}">
+</div>
+<div id=lookupcols>
+<table class=formfieldname><tr><td style="vertical-align:middle; width:50px">subjectID</td><td>Column Name / Description (optional)</td></tr></table>
+<table>
+	{{i = 0
+	for i, c in enumerate(columns.itervalues()):}}
+	<tr><td style="vertical-align:middle; width:50px">
+		<input type=text name="counterColumnID_{{=i}}" value="{{=c.subjectID}}" style="width:20px; height:20px;text-align:center;font-weight:bold; font-size:15px;"> 
+	</td><td>
+		<input type=text name="counterColumnName_{{=i}}" value="{{=c.columnName}}" style="width:355px;font-weight:bold; margin-bottom:1px; font-size:15px;"><br>
+		<input type=text name="counterColumnDescription_{{=i}}" value="{{=c.description or ""}}" style="width:355px;color:#999999;">
+		<input type=hidden name="counterColumnOrder_{{=i}}" value="{{=c.order or ""}}">
+	</td></tr>
+	{{pass}}
+	{{j = 0
+	while i <= 20:
+		i += 1
+		d = ' style="display:none;"'
+		if j == 0: d = ""
+		}}
+		<tr id="col_{{=j}}" {{=XML(d)}}><td style="vertical-align:middle; width:50px">
+		<input type=text name="counterColumnID_{{=i}}" style="width:20px; height:20px;text-align:center;font-weight:bold; margin-bottom:1px; font-size:15px;"> 
+		</td><td>
+		<input type=text name=counterColumnName_{{=i}} style="width:355px;font-weight:bold; font-size:15px;"><br>
+		<input type=text name="counterColumnDescription_{{=i}}" style="width:355px;color:#999999;">
+		</td></tr>
+		{{j += 1
+	pass}}
+	</table>
+	<div style="text-align:right; width:430px;" class="link normaltext" OnClick="AddColumn();">Add</div>
+</div>
+{{WriteFieldName("Key lookup table", helpKeyLookupTable)}}
+	<select id=keyLookupTableID name=keyLookupTableID>
+	<option value=0>No lookup table</option>
+	<option value=-1> * Create new lookup table * </option>
+	{{for cID, c in lookupTables.iteritems():
+		s = ""
+		if cID == keyLookupTableID: s = " Selected"}}
+		<option value="{{=cID}}"{{=s}}>{{=c.lookupTableName}} ({{=cID}})</option>
+	{{pass}}
+	</select>
+	<span OnClick="ViewLookupTable('keyLookupTableID');" class="link smallertext">View table</span>
+{{WriteFieldName("keyID name", helpKeyID)}}
+<input type=text name=keyID value="{{=keyID or ""}}">
+
+{{WriteFieldName("Source Type", helpSourceType)}}
+<select name="sourceType">
+	{{for s in sourceTypes:}}
+		<option value="{{=s.sourceType}}"{{if sourceType == s.sourceType: response.write(" Selected")}}>{{=s.sourceTypeText}}</option>
+	{{pass}}
+</select>
+
+{{WriteFieldName("Source", helpSource)}}
+<input type=text name=source value="{{=source or ""}}">
+
+{{WriteFieldName("Procedure Name", helpProcName)
+p = procedureName or ""}}
+<input type=text id=procname name=procedureName value="{{=p if int(request.vars.counterID or 0) else "data."}}">
+{{if int(request.vars.counterID or 0):}}
+	<span class="smallertext link" OnClick="ViewProc();">View Proc Text</span>
+{{pass}}
+{{WriteFieldName("Procedure Order", helpProcOrder)
+p = procedureOrder or 200}}
+<input type=text id=procorder name=procedureOrder value="{{=p if int(request.vars.counterID or 0) else "200"}}" style="width:30px;">
+
+<div class=formfieldname><input type=checkbox name=absoluteValue id=absoluteValue {{if absoluteValue: response.write(" Checked")}}><label for=absoluteValue>Absolute Value</label>
+<img src="{{=URL("static/images/help2.png")}}" class="tt middleimg" title="<div class=normaltext>Check this if the counter has an absolute value such as total number of users. Uncheck this if your counter is counting things such as logins per day.</div>">
+</div>
+
+<div class=formfieldname><input type=checkbox name=published id=published {{if published: response.write(" Checked")}}><label for=published>Published</label>
+<img src="{{=URL("static/images/help2.png")}}" class="tt middleimg" title="<div class=normaltext>Uncheck this if you are making a counter for a feature that has not been published yet.<br>In these cases your counter will point to a public test server and when the feature goes out you want to clear it and point it to TQ instead.<br>The counter will then be marked as unpublished which is a reminder for you to switch it over once your feature is on TQ.</div>">
+</div>
+<div class=formfieldname><input type=checkbox name=obsolete id=obsolete {{if obsolete: response.write(" Checked")}}><label for=obsolete>Obsolete</label>
+<img src="{{=URL("static/images/help2.png")}}" class="tt middleimg" title="<div class=normaltext>Check this if the counter has become obsolete so that no new data will be added but you don't want to delete it yet.</div>">
+</div>
+
+<div class=formfieldname>Description (optional)</div>
+	<textarea id=description name=description style="width:500px; height:150px;">{{=description or ""}}</textarea>
+<div style="padding-top:16px;"><input type=submit value="Submit"></div>
+
+</form>
+
+{{if int(request.vars.counterID or 0):}}
+<br><div class=normaltext>
+<a style="color:crimson;" href="DeleteCounter?counterID={{=request.vars.counterID}}" OnClick="return confirm('Are you sure you want to delete this counter?');">Delete this counter</a> &middot; <a href="EditCounter?counterID=0&fromCounterID={{=request.vars.counterID}}&parentCounterID={{=request.vars.counterID}}">Create child counter</a> &middot; <a href="EditCounter?counterID=0&fromCounterID={{=request.vars.counterID}}">Create duplicate counter</a>
+</div>
+{{pass
+counters = [
+	[4, "Accounting / Entries", "This counter has multiple count columns and a key"],
+	[10, "User / PCU", "Simplest counter in the world! No subject, no key and one count"],
+	[148, "Market / Contracts by type and solar system", "This counter has a subject and a key"],
+	[150, "Market / Contracts by solar system", "This counter is derived from the one above and groups on the solarsystem.<br>Note that the subject from the counter above is the key in this counter."],
+	[10, "User / PCU", "Simplest counter in the world! No subject, no key and one count"],
+
+]}}
+<h3>Counter Data</h3>
+{{if not counterData:}}
+<h5>Counter has no data</h5>
+{{else:}}
+<table>
+{{for k, v in counterData.iteritems():}}
+<tr><td>{{=k}}</td><td style="font-weight:bold;">{{=v}}</td></tr>
+{{pass}}
+</table>
+&nbsp;<a href="DeleteCounterData?counterID={{=counterID}}" OnClick="return confirm('Are you sure you want to go to the delete page for this counter?\nYou can do some pretty evil stuff in there!');">Delete data from counter</a>
+{{pass}}
+
+<h3>Example counters <span class=normaltext>(Links open up in a new tab)</span></h3>
+<ul>
+{{for c in counters:}}
+<li>{{=c[1]}} - <a href="Report?counterID={{=c[0]}}" target=example>View Report</a> / <a href="EditCounter?counterID={{=c[0]}}" target=example>Edit Counter</a><br><span class=normaltext>{{=XML(c[2])}}</span></li>
+{{pass}}
+</ul>
+<script>
+
+function AddColumn() {
+	for (i = 0; i < 20; i++) {
+		c = $("#col_" + i);
+		if (!c.is(':visible')) {
+			c.show();
+			break;
+		}
+		
+	}
+}
+function ViewLookupTable(elementName) {
+	var v = parseInt($("select[name="+elementName+"]").val());
+	if (v == 0) {
+		alert("No lookup table")
+		return;
+	}
+	window.open("{{=URL("ViewLookupTable?lookupTableID=")}}"+v)
+}
+function ViewProc() {
+	window.open("{{=URL("ViewProc?counterID=%s" % request.vars.counterID)}}")
+}
+function ViewCounters() {
+	window.open("{{=URL("ManageCounters")}}")
+}
+function OnSubjectLookupTableChanged() {
+	if ($("#subjectLookupTableID option:selected").val() < 0) {
+		$("#lookupcols").show();
+		$("#subjectidname").hide();
+	} else {
+		$("#lookupcols").hide();
+		$("#subjectidname").show();
+	}
+}
+OnSubjectLookupTableChanged();
+
+function CheckSubmit() {
+	if ($("input[name=name]").val() == "") {
+		alert("You must specify a name")
+		return false;
+	}
+	if ($("input[name=counterIdentifier]").val() == "") {
+		alert("You must specify an identifier")
+		return false;
+	}
+	var subjectLookupTableID = parseInt($("select[name=subjectLookupTableID]").val());
+	var keyLookupTableID = parseInt($("select[name=keyLookupTableID]").val());
+	var subjectID = $("input[name=subjectID]").val();
+	var keyID = $("input[name=keyID]").val();
+
+	if (subjectLookupTableID > 0 && subjectID == "") {
+		alert("You must put in a subjectID if you specify a Subject lookup table")
+		return false;
+	}
+	if (keyLookupTableID > 0 && keyID == "") {
+		alert("You must put in a keyID if you specify a Key lookup table")
+		return false;
+	}
+	if (subjectLookupTableID == 0 && subjectID != "") {
+		alert("subjectID doesn't make any sense unless you specify a Subject lookup table")
+		return false;
+	}
+	if (keyLookupTableID == 0 && keyID != "") {
+		alert("keyID doesn't make any sense unless you specify a Key lookup table")
+		return false;
+	}
+	if (subjectLookupTableID > 0 && keyLookupTableID == 0) {
+		alert("You cannot specify a subject without a key. You should move your subject to the key instead")
+		return false;
+	}
+	if ($("input[name=procedureName]").val() == "data.") {
+		alert("procedureName cannot be just 'data.'")
+		return false;
+	}
+	return true;
+}
+
+function toTitleCase(str)
+{
+    return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+}
+
+function SuggestIdentifier()
+{
+	if ($("#origCounterIdentifier").val() != "") {
+		if (!confirm('This counter already has a saved unique identifier. Are you sure you want to replace it?'))
+			return;
+	}
+
+	var product = "unknown";
+	var scope = "unknown";
+	var counterIdentifier = "bla";
+	var name = $("#name").val();
+	name = toTitleCase(name)
+	name = name.charAt(0).toLowerCase() + name.substr(1);
+	name = name.replace(/ /g, "");
+	var groupName = $("#groupID option:selected").text();
+	var lst = groupName.toLowerCase().split(" ");
+	if (lst[0] == "eve" || lst[0] == "dust" || lst[0] == "core") {
+		product = lst[0];
+		if (lst[1].length > 1)
+			scope = lst[1];
+    } else {
+    	scope = groupName.replace(/ /g, "").replace(/\./g, "").toLowerCase();
+    }
+	counterIdentifier = product + "." + scope + "." + name;
+	$("#counterIdentifier").val(counterIdentifier);
+}
+</script>

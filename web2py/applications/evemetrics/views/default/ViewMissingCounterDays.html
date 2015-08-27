@@ -1,0 +1,37 @@
+{{extend 'layout.html'}}
+<h3>Missing Counter Days</h3>
+
+<h4>Counters that have some missing days</h4>
+<table id=ordertable class="zebra datatable">
+	<tr><th>Counter</th><th>Missing Days</th></tr>
+{{
+	keys = missingDatesByCounter.keys()
+	keys.sort()
+	for k in keys:
+		dates = missingDatesByCounter[k]
+		d = ""
+		firstDate = None
+		prevDate = None
+		lastDate = None
+		for dt in dates:
+			if not firstDate:
+				firstDate = dt
+				d = "%s" % firstDate.strftime("%Y-%m-%d")
+			pass
+			if prevDate:
+				if dt == prevDate + datetime.timedelta(days=1):
+					lastDate = dt
+				else:
+				pass
+			pass
+			prevDate = dt
+		pass
+		if lastDate:
+			d += " - %s" % lastDate.strftime("%Y-%m-%d")
+		pass
+		}}
+		<tr class=o>
+			<td><a href="Report?counterID={{=k[1]}}">{{=k[0]}}</a></td><td>{{=XML(d)}}</td>
+		</tr>
+		{{pass}}
+</table>

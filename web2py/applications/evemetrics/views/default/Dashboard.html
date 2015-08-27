@@ -1,0 +1,60 @@
+{{extend 'layout.html'}}
+<h3>
+{{if dashboardID:}}
+    {{=WriteStar(starred)}}
+    <span style="color:gray;">Dashboard:</span> {{=GroupAndName(groupID, groupName, dashboardName, "Dashboards")}}
+    {{if IsRestricted("DASHBOARD", dashboardID) != ACCESS_OPEN:}}
+    <a href="{{=URL("AccessRules?contentType=DASHBOARD&contentID=%s" % dashboardID)}}"><img src="{{=URL("static/images/lock.png")}}" class="middleimg" title="This dashboard has access restrictions"></a>
+    {{pass}}
+
+    <span style="color:#AAAAAA" class=normaltext>(<a href="EditDashboard?dashboardID={{=dashboardID}}" style="color:#AAAAAA">edit</a>)</span>
+    <div style="float:right" class=slightlybigtext><a href="DashboardGraphs?dashboardID={{=dashboardID}}">View Graphs</a> &nbsp;
+    <input type="hidden" id="datepicker" OnChange="GotoDate(this);" value="{{=request.vars.dt or ""}}"></div>
+{{else:}}
+    <span style="color:gray;">Collection:</span> {{=GroupAndName(groupID, groupName, dashboardName, "Collections")}}
+    {{if IsRestricted("COLLECTION", collectionID) != ACCESS_OPEN:}}
+    <a href="{{=URL("AccessRules?contentType=COLLECTION&contentID=%s" % collectionID)}}"><img src="{{=URL("static/images/lock.png")}}" class="middleimg" title="This collection has access restrictions"></a>
+    {{pass}}
+    <div style="float:right" class=slightlybigtext><a href="Counters?collectionID={{=collectionID}}">View Collection</a></div>
+{{pass}}
+</h3>
+<div style="text-align:right;"><span class=normaltext>Period: 
+{{
+periods = [("1 day", 1), ("7 days", 7), ("30 days", 30), ("90 days", 90)]
+if config.get("periodType", "latest") == "calendar":  periods = [("Day", 1), ("Week", 7), ("Month", 30), ("3 Months", 90)]
+links = []
+for p in periods:
+    cl = ""
+    if p[1] == int(numDays):
+        cl = "selectedlink"
+    pass
+    links.append("<a href=\"%sdays=%s\" class=\"%s\">%s</a>" % (GetFullUrlWithout("days"), p[1], cl, p[0]))
+pass
+response.write(XML(" &middot; ".join(links)))}}
+</span>
+</div>
+
+
+{{include 'default/basedashboard.html'}}
+
+<span class="normaltext link" OnClick="ToggleAllDetails();">Toggle all details</span> &middot; <a class="normaltext link" href="{{=XML(GetFullUrlWithout("condensed"))}}condensed={{=("0" if request.vars.condensed == "1" else "1")}}">Toggle condensed view</a> &middot; <span class="normaltext link" OnClick="FilterDashboard();">Filter dashboard</span>
+<br><a class="smallbutton" OnClick="ShowAddToDigest();">Add to Digest...</a>
+<script>
+function ShowAddToDigest(all)
+{
+    LoadAddToContainer("digest", "Dashboard", "title="+encodeURIComponent("{{=XML(dashboardName)}}"), all);
+}
+</script>
+<div id="addtoparentcontainer" style="display:none;"></div>
+
+{{
+if dashboardID:
+    tagLinkID = dashboardID
+    tagLinkType = TAG_DASHBOARD
+
+    contentType = "DASHBOARD"
+    contentID = dashboardID
+}}
+<br>&nbsp;
+    {{include 'default/TagBox.html'}}
+{{pass}}

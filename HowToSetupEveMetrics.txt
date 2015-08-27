@@ -1,0 +1,68 @@
+
+***********************
+* EVE METRICS (c) CCP *
+***********************
+
+
+------------
+PYTHON SETUP
+------------
+
+Python with pyodbc and python-ldap needs to be setup
+
+  1. Install Python 2.7.9
+
+  2. Open command line window in folder \Python27 and execute the following to install pyodbc and python-ldap...
+       Scripts\pip install pyodbc
+       Scripts\pip install python-ldap
+
+
+----------------
+SQL SERVER SETUP
+----------------
+
+SQL Server needs to be setup
+
+
+-------------
+EXTRACT FILES
+-------------
+
+Unzip ebs_METRICS.zip file to folder ebs_METRICS
+
+
+----------------------------------------
+EVE METRICS DATABASE SETUP IN SQL SERVER
+----------------------------------------
+
+Create database ebs_METRICS
+
+Create login ebs_METRICS using SQL Server authentication with password ebs_METRICS and connect it to database ebs_METRICS as db_owner
+
+Open the following files in SQL Studio and execute on database ebs_METRICS...
+  coreUpdateJ_ALL_FOR_NEW_DB.sql
+  metricsUpdate_ALL_FOR_NEW_DB.sql
+  metricsTestData.sql
+
+
+-----------------
+RUN WEB2PY SERVER
+-----------------
+
+Open command line window in folder ebs_METRICS/web2py and execute...
+  \Python27\python web2py.py -i 127.0.0.1 -p 80 -a changeme
+
+Then you have access to EVE Metrics on http://127.0.0.1/evemetrics/default
+
+
+
+
+-----------
+OTHER STUFF
+-----------
+
+Database connection strings are found in the following files...
+  web2py/applications/evemetrics/models/db.py
+  web2py/applications/evemetrics/controllers/default.py
+
+Password for Admin tab is changeme

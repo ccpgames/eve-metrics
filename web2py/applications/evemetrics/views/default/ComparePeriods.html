@@ -1,0 +1,114 @@
+{{extend 'layout.html'}}
+
+<h4>
+<a class=tt href="Reports?groupID={{=counter.groupID}}">{{=counter.groupName}}</a> /
+<a class=tt href="Report?counterID={{=counterID}}">{{=counter.counterName}}</a>
+{{if subjectText: response.write(" : %s" % subjectText)}}
+</h4>
+
+{{dispFilters = "none"
+showhide = "Show"
+if int(GetCookie("showFilters") or 0):
+    dispFilters = "block"
+    showhide = "Hide"
+pass}}
+
+<div id="container" style="height: 500px; margin: 0 auto"></div>
+
+<style>
+    .settings td {
+        font-size: 12px;
+    }
+</style>
+
+<div style="margin-top:2px;">
+    <a id=togglesettings OnClick="ToggleSettings();" class=link style="border:1px solid #CECECE; background-color:#F5F5F5;padding:5px 5px 4px 5px;font-size:10px;">{{=showhide}} Settings</a>
+</div>
+<div id=counterform style="display:{{=dispFilters}}; border:1px solid #CECECE; background-color:#F5F5F5;padding:5px;">
+    <form method="GET" action="ComparePeriods">
+    <table class=settings>
+        <tr>
+            <td>counterID<br>
+            <input type="text" name="counterID" id="counterID" value="{{=counterID}}" style="width:80px;">
+            </td><td>subjectID<br>
+            <input type="text" name="subjectID" id="subjectID" value="{{=subjectID}}" style="width:80px;">
+            </td><td>keyID<br>
+            <input type="text" name="keyID" id="keyID" value="{{=keyID}}" style="width:80px;">
+            </td>
+        </tr>
+        <tr>
+            <td>days<br><input type="text" name="days" id="days" value="{{=days}}" style="width:80px;"></td>
+            <td>days before<br><input type="text" name="daysBefore" id="daysBefore" value="{{=daysBefore}}" style="width:80px;"></td>
+            <td>&nbsp;<br><input type="checkbox" name="doNotSubtractStartValue" id="doNotSubtractStartValue" value="1" {{if doNotSubtractStartValue: response.write(" Checked")}}><label for="doNotSubtractStartValue">Do not subtract first value</label></td>
+        </tr>
+        <tr>
+            <td>start Date<br><input type="text" name="startDate" id="startDate" value="{{=startDate or ""}}" style="width:80px;"></td>
+            <td>end Date<br><input type="text" name="endDate" id="endDate" value="{{=endDate or ""}}" style="width:80px;"></td>
+        </tr>
+    </table>
+
+    <input type="submit" value="Apply Filters">
+</form>
+</div>
+
+
+<script>
+$(function () {
+        $('#container').highcharts({
+            title: {
+                text: '{{=title}}',
+                x: -20 //center
+            },
+            subtitle: {
+                text: '',
+                x: -20
+            },
+            credits: {
+                  enabled: false
+            },
+            yAxis: {
+                title: {
+                    text: 'Count'
+                },
+                plotLines: [{
+                    value: 0,
+                    width: 1,
+                    color: '#808080'
+                }]
+            },
+            xAxis: {
+                title: {
+                    text: 'Days'
+                },
+                plotLines: [{
+                    value: 0,
+                    width: 1,
+                    color: '#EEEEEE'
+                }]
+            },
+            tooltip: {
+                valueSuffix: '',
+                headerFormat: '<span style="font-size: 12px">{point.key}</span> days <br/>',
+                shared: true,
+            },
+            series: [
+            {{for j, k in enumerate(series.iterkeys()):
+                points = series[k]
+                dt = k[1]
+                name = k[0]
+                response.write("//%s" % datetime.datetime.strptime(dt, "%Y-%m-%d"))
+                isCurrent = (datetime.datetime.strptime(dt, "%Y-%m-%d") >= (datetime.datetime.now()-datetime.timedelta(days=days)))
+            }}
+            {
+                name: '{{=name}}',
+                data: [{{=", ".join(["[%s, %s]" % (p[0], str(p[1])) for i, p in enumerate(points)])}}],
+                marker : {
+                  enabled : false,
+                },
+                lineWidth: {{=(4 if isCurrent else 2)}}, // {{=i}} {{=len(series)}}
+                {{if isCurrent: response.write(XML("color: '#FF5555'",))}}
+            },
+            {{pass}}]
+        });
+    });
+</script>

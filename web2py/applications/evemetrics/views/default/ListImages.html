@@ -1,0 +1,10 @@
+{{extend 'layout.html'}}
+
+<h2>List Images in {{=folder}}</h2>
+
+{{for i in images:}}
+	<a href="{{=i}}"><img src="{{=i}}" width=600 title="{{=i}}" style="border:2px solid #CDCDCD; padding:4px;"></a>
+	<div style="font-size:10px;"><a href="{{=i}}">http://{{=BASE_URL}}{{=i}}</a></div>
+	
+	<br>
+{{pass}}

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+
+  <title>{{=response.title or request.application}}</title>
+ {{
+  response.files.append(URL('static','css/skeleton.css'))
+  response.files.append(URL('static','css/web2py.css'))
+  response.files.append(URL('static','css/superfish.css'))
+  response.files.append(URL('static','css/tablesorter.css'))
+  response.files.append(URL('static','css/jquery.tagbox.css'))
+  response.files.append(URL('static','js/superfish.js'))
+  response.files.append(URL('static','jqueryui/css/redmond/jquery-ui-1.8.17.custom.css'))
+
+  # http://shjs.sourceforge.net/
+  response.files.append(URL('static','css/sh/sh_ide-msvcpp.css'))
+  }}
+
+{{include 'web2py_ajax.html'}}
+<base target="_parent" />
+</head>
+<style>
+.bod {
+	{{if request.vars.background == "noise":}}
+	background: url({{=URL("static/images/noise.png")}});
+	{{pass}}
+}
+td {
+	padding:4px !important;
+}
+.ot {
+	background: -webkit-linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+	background: -moz-linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+	background: -linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+	background: -ms-linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+	background: linear-gradient(top, #CDCDCD, #F3F3F3) !important;
+}
+</style>
+<body class=bod>
+<div id="wrapper">
+<div id="center">
+
+{{pass
+if not request.vars.hidetitle:}}
+<h4 style="text-align:left; text-shadow: 1px 1px #DDDDDD;"><span class=groupLink><a href="Reports?groupID={{=groupID}}">{{=groupName}}</a></span> / <a href="Report?counterID={{=request.vars.counterID}}">{{=XML(reportTitle)}}</a>
+<div style="float:right;margin-right:5px;">{{=FmtDatePretty(reportDate)}}</div>
+</h4>
+{{pass}}
+{{block fullView}}
+
+
+<table id=myTable class="zebra datatable tablesorter" style="width:100%">
+{{
+	checked = ""
+	if len(report["rows"]) == 1: checked = " Checked"
+}}
+<thead>
+	<tr>
+		{{if "subjectID" in keyColumns:}}
+			{{if request.vars.hideids != "1":}}
+			<th>{{=keyColumns["subjectID"]}}</th>
+			{{pass}}
+			<th>{{=keyColumns["subjectTitle"]}}</th>
+		{{pass}}
+		{{if "keyID" in keyColumns:}}
+			{{if request.vars.hideids != "1":}}
+			<th>{{=keyColumns["keyID"]}}</th>
+			{{pass}}
+			<th>{{=keyColumns["keyTitle"]}}</th>
+		{{pass}}
+		{{for colID in report["columns"].iterkeys():
+			colName, desc = report["columns"][colID]}}
+			<th style="text-align:right;" title="{{=(desc or "").replace("\n", "<br>")}}" class="tt{{if int(request.vars.orderColumnID or -1) == colID and len(report["columns"]) > 1: response.write(" ot")}}""><nobr>{{=colName}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</nobr></th>
+			{{
+		pass}}
+
+	</tr>
+</thead>
+<tbody>
+	{{
+	totals = OrderedDict()
+	for row in report["rows"]:
+		keyID = row[0]}}
+		<tr>
+		{{if "subjectID" in keyColumns:}}
+			{{if request.vars.hideids != "1":}}
+			<td class=gray>{{=getattr(row, "subjectID")}}</td>
+			{{pass}}
+			<td>{{=GetUrlForSubjectOrKey(getattr(row, "subjectID"), getattr(row, "subjectText"), subjectLink, subjectLabel)}}</td>
+		{{pass}}
+		{{if "keyID" in keyColumns:}}
+			{{if request.vars.hideids != "1":}}
+			<td class=gray>{{=row[0]}}</td>
+			{{pass}}
+			<td>{{=GetUrlForSubjectOrKey(getattr(row, "keyID"), getattr(row, "keyText"), keyLink, keyLabel)}}</td>
+		{{pass}}
+			{{for c, name in report["columns"].iteritems():}}
+			<td class=tablenumber>
+				{{
+				name = name[0]
+				if c not in totals: totals[c] = 0
+
+				v = getattr(row, name)
+				amt = FmtAmt(v)
+				
+				totals[c] += v
+				txt = HistoryLink(amt, request.vars.counterID, c, keyID)
+				response.write(txt)
+				}}
+			</td>
+			{{pass}}
+		</tr>
+	{{pass}}
+</tbody>
+</table>
+{{end}}
+
+
+
+</div>
+</div>
+<style>
+#wrapper {
+    width:100%;
+    text-align:center;
+}
+
+#center {
+    {{if request.vars.align == "center":}}
+    display:inline-block;
+    max-width:950px;
+    margin-top:{{=(request.vars.top or 10)}}px;
+    {{pass}}
+}
+</style>
+
+{{block bottomView}}
+
+{{end}}
+
+<script>
+
+$(document).ready(function()
+    {
+        $(".zebra tr:odd").addClass("alt");
+    }
+);
+
+var menuDiv = null;
+$(document).ready(function() {
+    $(".tablesorter").tablesorter( {headers: { {{=numCols}}: { sorter: false} }, textExtraction: tableSorterSortMethod} );
+
+    $(".tablesorter").bind("sortEnd",function() {
+    	$(".zebra tr:even").removeClass("alt");
+        $(".zebra tr:odd").addClass("alt");
+    });
+
+});
+
+</script>
+
+
+
+
+
+</body>
+</html>

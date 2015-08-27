@@ -1,0 +1,56 @@
+{{extend 'layout.html'}}
+<h3>Edit lookup table</h3>
+<style>
+.formfieldname {
+	color:gray;
+	font-size:12px;
+	padding-top:5px;
+}
+</style>
+
+<form method=post action=EditLookupTable>
+<input type=hidden name=lookupTableID value="{{=lookupTableID}}">
+<div class=formfieldname>Name</div>
+<input type=text name=name value="{{=name}}">
+<div class=formfieldname>Identifier</div>
+<input type=text name=lookupTableIdentifier value="{{=lookupTableIdentifier}}">
+<div class=formfieldname>Source</div>
+<input type=text name=source value="{{=source or ""}}">
+<div class=formfieldname>Where does the information come from?</div>
+	<select name=sourceForID id=sourceForID style="width:300px;">
+	<option value="">Undefined</option>
+	{{for c in [("EXTERNAL", "External source (such as character names, solar system names, etc)"), ("TEXT", "zsystem.texts (for fast lookups)"), ("MAX", "The lookup table defines its own texts (ad-hoc texts)")]:
+		s = ""
+		if c[0] == sourceForID: s = " Selected"}}
+		<option value="{{=c[0]}}"{{=s}}>{{=c[1]}}</option>
+	{{pass}}
+	</select>
+<div class=formfieldname>lookupID</div>
+<input type=text name=lookupID value="{{=lookupID or ""}}">
+<div class=formfieldname>parentLookupTableID</div>
+	<select name=parentLookupTableID id=parentLookupTableID style="width:300px;">
+	<option value=0>No lookup table</option>
+	{{for cID, c in lookupTables.iteritems():
+		s = ""
+		if cID == parentLookupTableID: s = " Selected"}}
+		<option value="{{=cID}}"{{=s}}>{{=c.lookupTableName}}</option>
+	{{pass}}
+	</select>
+
+<div class=formfieldname>parentID</div>
+<input type=text name=parentID value="{{=parentID or ""}}">
+
+<div class=formfieldname>link</div>
+<input type=text name=link value="{{=link or ""}}" style="width:600px">
+
+<div class=formfieldname>label</div>
+<input type=text name=label value="{{=label or ""}}" style="width:600px">
+
+<div class=formfieldname>Description (optional)</div>
+	<textarea id=description name=description style="width:500px; height:150px;">{{=description or ""}}</textarea>
+<div style="padding-top:16px;"><input type=submit value="Submit"></div>
+
+</form>
+{{if int(request.vars.lookupTableID or 0):}}
+<br><a style="color:crimson;" class=normaltext href="DeleteLookupTable?lookupTableID={{=request.vars.lookupTableID}}" OnClick="return confirm('Are you sure you want to delete this table?');">Delete this lookup table</a>
+{{pass}}

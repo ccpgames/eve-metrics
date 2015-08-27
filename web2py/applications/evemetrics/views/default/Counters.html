@@ -1,0 +1,1077 @@
+{{extend 'layout.html'}}
+
+{{def WriteToolbarButton(yes, no, isYes, urlYes, urlNo, hintYes=None, hintNo=None):
+    url = ""
+    t = ""
+    hint = ""
+    if isYes:
+        t = yes
+        url = urlYes
+        hint = hintYes
+    else:
+        t = no
+        url = urlNo
+        hint = hintNo or hintYes
+    pass
+    txt = "<a href=\"%s\" title=\"%s\"><img class=tb src=\"%s\"></a>" % (url, hint, URL("static/images/toolbar/%s_off.png" % t))
+    response.write(XML(txt))
+pass
+h3Title = ""
+digestTitle = ""
+dashboardLink = ""
+    if collection:
+      digestTitle = collection.collectionName
+      h3Title = "<h3>%s <font color=gray>Collection: </font><a href=\"Collections?groupID=%s\">%s</a> / %s" % (WriteStar(starred), collection.groupID, collection.groupName, collection.collectionName)
+      if request.vars.graph:
+        h3Title += " &middot; <i><font color=crimson>unsaved</font></i>"
+      pass
+    if IsRestricted("COLLECTION", collection.collectionID) != ACCESS_OPEN:
+        h3Title += " <a href=\"" + URL("AccessRules?contentType=COLLECTION&contentID=%s" % collection.collectionID) + "\"><img src=\"" + URL("static/images/lock.png") + "\" class=\"middleimg\" title=\"This collection has access restrictions\"></a>"
+    pass
+    h3Title += " <span style=\"color:#AAAAAA\" class=normaltext>(<a href=\"EditCollection?collectionID=%s\" style=\"color:#AAAAAA\">edit</a>)</span>" % collection.collectionID
+    h3Title += "</h3>"
+    if not charts:}}
+        <div style="font-weight:bold;">This collection has no charts!</div><div class=normaltext>To start adding charts go to <i>Reports</i>, select the charts that you want and pick <i>Add to Collection</i></div>
+    {{else:
+        dashboardLink = "<a href=\"Dashboard?collectionID=%s\">View Dashboard</a>" % collection.collectionID
+    pass}}
+{{pass
+if not isTable or 1:}}
+<style>
+.tb {
+    cursor: pointer;
+}
+.chk {
+    vertical-align:middle;
+    padding: 0;
+    margin:0;
+    margin-bottom:2px;
+}
+</style>
+{{pass}}
+
+{{block fullView}}
+<div>
+<div>
+{{
+    first = ""
+    moretxt = ""
+    if len(charts) >= 1:
+        txt = ""
+        moretxt = ""
+        mr = ""
+        if not request.vars.collectionID: mr = " padding-top:14px;"
+        first = "<div OnClick=\"ToggleExpand('more');\" class=\"normaltext link\" style=\"color:gray; width:200px;padding-left:10px;%s\">[ click to view counter details... ]</div>" % (mr)
+        for i, chart in enumerate(charts):
+            g = "%s_%s_%s" % (chart["counterID"], chart["subjectID"], chart["keyID"])
+            moretxt += "<img id=\"gear_%s:%s\" src=\"%s\" title=\"Options for this chart\" class=gear style=\"height:12px;\">" % (i, g, URL("static/images/gear.png"))
+            moretxt += "&nbsp;<span  style=\"vertical-align:middle;\"><a href=\"Reports?groupID=%s\">%s</a> / " % (chart["groupID"], FmtText(chart["groupName"]))
+            moretxt += "<a class=tt href=\"Report?counterID=%s\" title=\"%s\">" % (chart["counterID"], FmtText(chart["counterDescription"]))
+            moretxt += chart["counterName"] + "</a></span>"
+            if chart["chartName"]:
+              s = chart["chartName"].decode("UTF-8")
+              moretxt += " : %s" % s
+            pass
+            moretxt += "<input type=hidden id=\"cfg%s\" value='%s'>" % (i+1, json.dumps(chart["config"]))
+
+            moretxt += "<br>"
+        pass
+        moretxt = "<div id=more style=\"display:none;padding-left:10px;\">" + moretxt[:-4] + "</div>"}}
+{{else:}}
+{{=XML("&nbsp;")}}
+{{pass}}
+</div>
+    <div style="float:right;text-align:right; padding-top:10px;">
+    {{WriteToolbarButton("chart", "table", isTable, GetFullUrlWithout("viewMode") + "viewMode=graphs", GetFullUrlWithout("viewMode") + "viewMode=table", "View Chart", "View Table")}}
+    {{WriteToolbarButton("zoomout", "zoom", zoom, GetFullUrlWithout("zoom") + "zoom=0", GetFullUrlWithout("zoom") + "zoom=1", "Zoom out", "Zoom in")}}
+    {{WriteToolbarButton("high", "high", int(graphHeight or 0) < 400, GetFullUrlWithout("h") + "h=400", GetFullUrlWithout("h") + "h=260", "Toggle High graph")}}
+    {{
+    if timeDetailsFound:
+      WriteToolbarButton("timecounterson", "timecounters", timeDetailsPeriod is not None, GetFullUrlWithout("numDays&timedetails") + "numDays=30&timedetails=", GetFullUrlWithout("numDays&timedetails") + "numDays=3&timedetails=60", "Go back to day view", "Show Time Details for last 3 days")
+    pass
+    }}<br>
+    {{=XML(dashboardLink)}}
+    </div>
+</div>
+{{=XML(h3Title)}}
+
+    {{=XML(first)}}
+    {{=XML(moretxt)}}
+
+<div style="clear:both"></div>
+{{if viewMode.startswith("singlegraph"):
+    controlID = 1
+    currCharts = copy.copy(charts)}}
+    <div style="width:{{=graphWidth}}px">
+    {{include 'default/MultiChart.html'}}
+</div>
+{{elif not isTable:
+    for i, chart in enumerate(charts):
+        currCharts = [copy.copy(chart)]
+        controlID = i}}
+        <div style="width:{{=graphWidth}}px">
+        {{include 'default/MultiChart.html'}}
+        </div>
+    {{pass
+
+else:
+    # table view
+    allDataByDate = {}
+    chartNames = []
+    for i, chart in enumerate(charts):
+        controlID = chart["controlID"]
+        chartName = chart["chartName"].decode("UTF-8", errors="ignore")
+        chartNames.append(chart["counterName"] + " <i>" + chartName + "</i>")
+        dates     = chart["dates"]
+        data      = chart["data"]        
+        markers   = chart["markers"]
+        for jj, d in enumerate(dates):
+            if d not in allDataByDate:
+                allDataByDate[d] = []
+                for j in xrange(len(charts)):
+                    allDataByDate[d].append([0, ""])
+                pass
+            pass
+            allDataByDate[d][i][0] = FmtAmt(data[jj])
+            allDataByDate[d][i][1] = markers[jj]
+        pass
+    pass
+    keys = allDataByDate.keys()
+    keys.sort()
+    keys.reverse()}}
+
+    <table class="zebra datatable tablesorter" style="width:940px;" id=maintable>
+    <thead>
+    <tr><th>Date</th>
+    {{for c in chartNames:
+        ctrimmed = c
+        if len(c) > 16: ctrimmed = "..." + c[-16:]}}
+        <th><span class="smalltext2">{{=XML(c)}}</span></th>
+    {{pass
+    if annotations:}}
+    <th>Annotation</th>
+    {{pass}}
+    </tr>
+    </thead>
+    <tbody>
+    {{
+    for i, dt in enumerate(keys):
+        data = allDataByDate[dt]
+        dtString = FmtDate(dt)
+        if request.vars.timedetails: dtString = dt.strftime("%Y-%m-%d %H:%M")
+        }}
+        <tr><td><nobr><strong>{{=dtString}}&nbsp;</strong></nobr></td>
+        {{for d in data:}}
+            <td>{{=d[0]}}</td>
+        {{pass
+        if annotations:
+        mID = 0}}
+        <td>
+        {{if len(d[1]):}}
+        <a href="ViewMarker?markerID={{=d[1][2]}}">{{=d[1][0]}}</a>
+        {{pass}}
+
+        </td>
+        {{pass}}
+        </tr>
+    {{pass}}
+    </tbody>
+    </table>
+{{=WriteExportToExcel("maintable")}}
+
+{{pass}}
+
+{{end}}
+
+{{block bottomView}}
+{{dispFilters = "none"
+showhide = "Show"
+if int(GetCookie("showFilters") or 0):
+    dispFilters = "block"
+    showhide = "Hide"
+pass}}
+
+
+<div id="configdialog" title="Configure Chart">
+<form class="configdialogform">
+<input type="hidden" name="cfg_number" id="cfg_number">
+<label for="label" class=normaltext>Color</label>
+<br><select name="cfg_color" id="cfg_color" class=spacedout>
+{{options = [(c, "#" + c.upper()) for c in DEFAULT_CHART_COLORS]
+options.insert(0, ("", "Default"))
+for o, txt in options:}}
+    <option value="{{=o}}" style="background-color:#{{=o}}; color:white;">{{=txt}}</option>
+{{pass}}
+</select>
+<br><label for="label" class=normaltext>Min Value</label>
+<br><input type="text" name="cfg_minValue" id="cfg_minValue" class=spacedout><br>
+<label for="label" class=normaltext>Max Value</label>
+<br><input type="text" name="cfg_maxValue" id="cfg_maxValue" class=spacedout><br>
+<label for="label" class=normaltext>Value Multiplier</label>
+<br><input type="text" name="cfg_yMult" id="cfg_yMult" class=spacedout><br>
+<label for="label" class=normaltext>y-axis title</label>
+<br><input type="text" name="cfg_title" id="cfg_title" class=spacedout><br>
+<label for="label" class=normaltext>Line Width</label>
+<br><input type="text" name="cfg_lineWidth" id="cfg_lineWidth" class=spacedout> <input type="checkbox" name="all_lineWidth" id="all_lineWidth" class="middleimg"><label for="all_lineWidth" class=
+normaltext>all</label><br>
+<label for="label" class=normaltext>Marker Size</label>
+<br><input type="text" name="cfg_pointSize" id="cfg_pointSize" class=spacedout> <input type="checkbox" name="all_pointSize" id="all_pointSize" class="middleimg"><label for="all_pointSize" class=normaltext>all</label>
+<br>
+<label for="label" class=normaltext>Chart Type</label>
+<br>
+<select name="cfg_chartType" id="cfg_chartType" class=spacedout>
+{{options = [("", "Default"), ("area", "Area"), ("areaspline", "Spline"), ("line", "Line"), ("column", "Column")]
+for o, txt in options:}}
+    <option value="{{=o}}">{{=txt}}</option>
+{{pass}}
+</select> <input type="checkbox" name="all_chartType" id="all_chartType" class="middleimg"><label for="all_chartType" class=normaltext>all</label>
+<br><label for="label" class=normaltext>Marker Style</label>
+<br>
+<select name="cfg_markerStyle" id="cfg_markerStyle" class=spacedout>
+{{options = [("", "Default"), ("circle", "Circle"), ("triangle", "Triangle"), ("square", "Square")]
+for o, txt in options:}}
+    <option value="{{=o}}">{{=txt}}</option>
+{{pass}}
+</select> <input type="checkbox" name="all_marker" id="all_marker" class="middleimg"><label for="all_marker" class=normaltext>all</label>
+<br><label for="label" class=normaltext>Line Style</label>
+<br>
+<select name="cfg_lineStyle" id="cfg_lineStyle" class=spacedout>
+{{options = [
+        'Solid',
+        'ShortDash',
+        'ShortDot',
+        'ShortDashDot',
+        'ShortDashDotDot',
+        'Dot',
+        'Dash',
+        'LongDash',
+        'DashDot',
+        'LongDashDot',
+        'LongDashDotDot',
+        ]
+for o in options:}}
+    <option value="{{=o}}">{{=o}}</option>
+{{pass}}
+</select> <input type="checkbox" name="all_lineStyle" id="all_lineStyle" class="middleimg"><label for="all_lineStyle" class=normaltext>all</label>
+
+<br><label for="label" class=normaltext>Fill Opacity</label>
+<br>
+<select name="cfg_opacity" id="cfg_opacity" class=spacedout>
+{{options = [("", "Default"), ("0.0", "0%"), ("0.1", "10%"), ("0.25", "25%"), ("0.5", "50%"), ("0.75", "75%"), ("1.0", "100%")]
+for o, txt in options:}}
+    <option value="{{=o}}">{{=txt}}</option>
+{{pass}}
+</select> <input type="checkbox" name="all_opacity" id="all_opacity" class="middleimg"><label for="all_opacity" class=normaltext>all</label>
+<br><label for="label" class=normaltext>Axis</label>
+<br>
+<select name="cfg_axis" id="cfg_axis" class=spacedout>
+{{options = [("0", "Left"), ("1", "Right")]
+for o, txt in options:}}
+    <option value="{{=o}}">{{=txt}}</option>
+{{pass}}
+</select>
+<br><label for="label" class=normaltext>Time details interval [minutes]</label>
+<br><input type="text" name="cfg_interval" id="cfg_interval" class=spacedout><br>
+
+<input type="hidden" name="collectionCounterID" id="collectionCounterID" value="">
+</form>
+</div>
+
+<div id="annotatedialog" title="Add a Personal Annotation" style="display:block; overflow:hidden;">
+    <form name=annotateform id=annotateform method=get action="AddMarkerFromGraph">
+        Label<br><input name=title id=annotationtitle style="width:100%; font-size:18px">
+        Date<br><input name=date id=annotationdate style="width:100px; font-size:18px">
+    </form>
+</div>
+<script>
+$("#annotatedialog").dialog({
+    autoOpen: false,
+    height:200,
+    width:320,
+    modal: false,
+    resizable: false,
+    buttons: {
+        'Submit': function() {
+            desc = $("#descedit").val(),
+            counterID = $("#counterID").val(),
+            collectionID = $("#collectionID").val();
+            $('#annotateform').submit();
+            $(this).dialog('close');
+        }
+    },
+    open: function(event, ui) {
+        $("#annotationdate").val();
+        $("#annotationtitle").focus();
+
+    },
+});
+
+$("#configdialog").dialog({
+    autoOpen: false,
+    height:680,
+    width:320,
+    modal: false,
+    resizable: false,
+    buttons: {
+        'Submit': function() {
+            // collect all the attributes that should be applied to all
+            allChecks = {}
+            $("#configdialog input").each(function() {
+                var id = $(this).attr("id");
+                if (!$(this).is(":checked")) {
+                    return;
+                }
+                allChecks[id.replace("all_", "")] = null;
+            });
+
+            var number = $("#cfg_number").val();
+            var prefix = "cfg" + number + "_"
+            var url = "Counters?"
+            var currUrl = window.location.href;
+            if (currUrl.indexOf("?") >= 0)
+                currUrl = currUrl.split("?")[1]
+            elements = currUrl.split("&")
+            urlComponents = {}
+            // take the current url and use as a basis of the new url
+            // but remove the current graph as well as the attributes
+            // from all graphs which have 'all' selected
+            for (i = 0; i < elements.length; i++) {
+                var e = elements[i];
+                var skip = false;
+                // current graph
+                if (e.indexOf("cfg" + number) >= 0) {
+                    skip = true;
+                }
+                // all graphs
+                if (e.indexOf("cfg") >= 0) {
+                    var s = e.split("_")[1];
+                    for (a in allChecks) {
+                        if (s.indexOf(a) == 0)
+                            skip = true;
+                    }
+                }
+                if (!skip) {
+                    url += elements[i] + "&"
+                }
+            }
+            // count the number of graphs
+            var count = 0;
+            $(".gear").each(function() {
+                count += 1;
+            })
+            // go through each input and add it to the url
+            // if 'all' is checked, add to the url for all graphs
+            $("#configdialog :input").each(function() {
+                var id = $(this).attr("id");
+                if (id.indexOf("cfg_") < 0 || id.indexOf("cfg_number") >= 0) {
+                    return;
+                }
+                id = id.replace("cfg_", "")
+                var val = $(this).val();
+                all = false;
+                if ($("#all_"+id).is(":checked")) {
+                    //alert("all checked for "+id)
+                    all = true;
+                }
+                if (id != "number"{{if not collection: response.write(XML(" && val != \"\""))}}) {
+                    if (all) {
+                        for (i = 1; i <= count; i++) {
+                            var p = "cfg" + i + "_"
+                            url += p + id + "=" + val + "&"
+                        }
+                    } else {
+                        url += prefix + id + "=" + val + "&"
+                    }
+                }
+            });
+            url = url.replace(/\&&/ig, '&')
+            //alert(url)
+            Goto(url)
+
+        }
+    },
+    open: function(event, ui) {
+        $("#cfg_number").val($(this).data('number'));
+        $("#cfg_color").val($(this).data('color'));
+        $("#cfg_lineWidth").val($(this).data('lineWidth'));
+        $("#cfg_pointSize").val($(this).data('pointSize'));
+        $("#cfg_inteval").val($(this).data('inteval'));
+        $("#cfg_title").val($(this).data('title'));
+        $("#cfg_yMult").val($(this).data('yMult'));
+        $("#cfg_maxValue").val($(this).data('maxValue'));
+        $("#cfg_minValue").val($(this).data('minValue'));
+        $("#cfg_chartType").val($(this).data('chartType'));
+        $("#cfg_markerStyle").val($(this).data('markerStyle'));
+        $("#cfg_lineStyle").val($(this).data('lineStyle'));
+        $("#cfg_axis").val($(this).data('axis'));
+        $("#cfg_opacity").val($(this).data('opacity'));
+        $("#cfg_interval").val($(this).data('interval'));
+
+    },
+});
+function AddAnnotation() {
+    $("#annotatedialog").dialog('open');
+}
+
+
+var defaultFormValues = {
+    "numDays"           : "365",
+    "annotations"       : "-2",
+    "aggregateMethod"   : "DateDay",
+    "viewMode"          : "graphs"
+}
+
+function IsDefaultValue(e) {
+    var k = $(e).attr("name");
+    var v = $(e).val();
+    if (k == undefined)
+        return true;
+    if (v == "")
+        return true;
+    if ($(e).attr("type") != undefined && $(e).attr("type").toLowerCase() == "checkbox")
+        if (!$(e).prop("checked"))
+            return true;
+
+    if (defaultFormValues[k] == v)
+        return true;
+    return false;
+}
+function ApplyFilters(cmd) {
+    url = "Counters?"
+    if (cmd != "")
+        url += cmd + "&"
+    $('#filters input,select').each(function(index) {
+        var k = $(this).attr("name");
+        var v = $(this).val();
+        //alert(k + ": " + v)
+        {{if request.vars.collectionID:}}
+            if ($(this).attr("name") == undefined)
+                return;
+            if ($(this).attr("type") != undefined && $(this).attr("type").toLowerCase() == "checkbox")
+                if (!$(this).prop("checked"))
+                    v = 0;
+            url += k + "=" + v + "&"
+        {{else:}}
+        if (!IsDefaultValue($(this)))
+            url += k + "=" + v + "&"
+        {{pass}}
+    });
+    var currUrl = window.location.href;
+    elements = currUrl.split("&")
+    for (i = 0; i < elements.length; i++) {
+        if (elements[i].indexOf("cfg") == 0) {
+            url += elements[i] + "&"
+        }
+    }
+    {{if request.vars.collectionID:}}
+        //url += "collectionID={{=request.vars.collectionID}}&"
+    {{pass}}
+    // strip out trailing & because we love Jorundur
+    if (url.lastIndexOf("&") == url.length-1)
+        url = url.substring(0, url.length-1)
+    //alert(url);
+
+    Goto(url);
+}
+</script>
+<div style="text-align:right; width:940px;display:none;" id=chartinteract>
+<span id=addannotation class="smallertext link" OnClick="AddAnnotation();">Add annotation to selected day</span> &middot; <a href="" id="gotoreport" class="smallertext">View report for selected day</a>
+</div>
+
+<div style="margin-top:2px;">
+    <a id=togglesettings OnClick="ToggleSettings();" class=link style="border:1px solid #CECECE; background-color:#F5F5F5;padding:5px 5px 4px 5px;font-size:10px;">{{=showhide}} Settings</a>
+</div>
+<div id=counterform style="display:{{=dispFilters}}; border:1px solid #CECECE; background-color:#F5F5F5;padding:5px;">
+    <form method=get id=filters>
+    {{if not request.vars.collectionID and type(request.vars.graph) != type([]):}}
+        <input name=counterID id="counterID" type=hidden value="{{=counterID}}" />
+        <input name=subjectID id="subjectID" type=hidden value="{{=subjectID}}" />
+        <input name=keyID id="keyID" type=hidden value="{{=keyID}}" />
+    {{pass}}
+        <table><tr><td>
+        <table style="width:320px;">
+            {{if request.vars.graph and type(request.vars.graph) == type([]) or (request.vars.graph and len(charts) > 1):
+                graphList = request.vars.graph
+                if type(graphList) != type([]):
+                    graphList = [graphList]
+                pass
+                for gg in graphList:}}
+                    <input type=hidden name=graph value="{{=gg}}">
+                {{pass}}
+            {{pass}}
+            {{if request.vars.collectionID:}}
+                <input type=hidden name=collectionID value="{{=request.vars.collectionID}}">
+            {{else:
+            # we allow two types of params to specify the graph.. Yeah, that's smart...
+            subjectID = keyID = 0
+            if request.vars.graph and isinstance(request.vars.graph, str):
+                g = request.vars.graph.split("_")
+                counterID = g[0]
+                if len(g) > 1: subjectID = g[1]
+                if len(g) > 2: keyID = g[2]
+            pass}}
+
+            <tr>
+                {{if subjectTitle:}}
+                    <td>{{=subjectTitle}}</td>
+                {{pass}}
+                {{if keyTitle:}}
+                    <td>{{=keyTitle}}</td>
+                {{pass}}
+                </tr>
+            <tr>
+                {{if subjectTitle:}}
+                <td>
+                    
+                    <div class="ui-widget">
+                        <table><tr><td style="padding:0px;"><input id="subjectText" type=text value="{{=subjectText}}" /></td><td><a class=button OnClick="ShowAllSubjects();" style="height:20px;">...</a></td></tr></table>
+                    </div>
+                </td>
+                {{pass}}
+                {{if keyTitle:}}
+                <td>
+                    <div class="ui-widget">
+                        <table style="padding:0px;"><tr><td style="padding:0px;"><input id="keyText" type=text value="{{=keyText}}" /></td><td><a class=button OnClick="ShowAllKeys();" style="height:20px;">...</a></td></tr></table>
+                    </div>
+                </td>
+                {{pass}}
+            </tr>
+            {{pass}}
+            <tr><td>Group By</td><td>Normalize</td><td>Annotations</td></tr>
+            <tr>
+                <td>
+                    <select name=aggregateMethod>
+                    {{for func in [("Daily average by week", "DateWeekByDay"), ("Day", "DateDay"), ("Only Sundays", "Sundays"), ("Week", "DateWeek"), ("Month", "DateMonth")]:
+                        s = ""
+                        if func[1] == aggregateMethod:
+                            s = " Selected"
+                        pass}}
+                        <option value="{{=func[1]}}"{{=s}}>{{=func[0]}}</option>
+                    {{pass}}
+                    </select>
+                </td>
+                <td>
+                    <select name=normalize>
+                    {{found = False
+                    for n in normalizeOptions:
+                        s = ""
+                        if n[0] == normalize:
+                            s = " Selected"
+                            found = True
+                        pass}}
+                        <option value="{{=n[0]}}"{{=s}}>{{=n[1]}}</option>
+                    {{pass
+                    if not found and normalize:}}
+                    <option value="{{=normalize}}" Selected>Custom</option>
+                    {{pass}}
+                    </select>
+                </td>
+                <td>
+                    <select name=annotations>
+                    <option value=0>None</option>
+                    <option value=-1{{if annotations == -1: response.write(" Selected")}}>Important</option>
+                    <option value=-2{{if annotations == -2: response.write(" Selected")}}>Important and Mine</option>
+                    <option value=-3{{if annotations == -3: response.write(" Selected")}}>Only Mine</option>
+                    <option value=1{{if annotations == 1: response.write(" Selected")}}>Expansions</option>
+                    <option value=14{{if annotations == 14: response.write(" Selected")}}>Point Releases</option>
+                    <option value=51{{if annotations == 51: response.write(" Selected")}}>Hotfixes</option>
+                    <option value=70{{if annotations == 70: response.write(" Selected")}}>Dust Releases</option>
+                    </select>
+                </td>
+            </tr>
+            <tr><td>Start Date</td><td>End Date</td><td>View</td></tr>
+            <tr>
+                <td>
+                    <input name="startDate" id="startDate" value="{{=startDate or ""}}" />
+                </td>
+                <td>
+                    <input name="endDate" id="endDate" value="{{=endDate or ""}}" />
+                </td>
+                <td>
+                    <select name=viewMode>
+                    {{for n in [("Multiple Graphs", "graphs"), ("Table", "table"), ("Single Graph", "singlegraph"), ("Single Graph Stacked", "singlegraph_stacked"), ("Single Graph Percentage", "singlegraph_percent")]:
+                        # , ("Single Normalized Graph", "singlegraph_norm")
+                        s = ""
+                        if n[1] == viewMode:
+                            s = " Selected"
+                        pass}}
+                        <option value="{{=n[1]}}"{{=s}}>{{=n[0]}}</option>
+                    {{pass}}
+                    </select>
+                </td>
+            </tr>
+
+            <tr><td>Number of days</td><td></td><td></td></tr>
+            <tr>
+                <td>
+                    <input name="numDays" id="numDays" value="{{=numDays or 0}}"/><br>
+                    <span class=smallertext>
+                    <a href="{{=GetFullUrlWithout("numDays")}}numDays=7">week</a> &middot; 
+                    <a href="{{=GetFullUrlWithout("numDays")}}numDays=30">month</a> &middot; 
+                    <a href="{{=GetFullUrlWithout("numDays")}}numDays=365">year</a> &middot; 
+                    <a href="{{=GetFullUrlWithout("numDays")}}numDays=0">everything</a></span>
+                </td>
+                <td colspan=5>
+                {{s = ""
+                if zoom: s = " Checked"}}
+                <input class=chk type=checkbox name=zoom id=zoom value=1{{=s}}> <label for=zoom>Zoom</label> &middot;
+                {{s = ""
+                if isBarGraph: s = " Checked"}}
+                <input class=chk type=checkbox name=bargraph id=bargraph value=1{{=s}}> <label for=bargraph>Bar Graph</label> &middot;
+                {{s = ""
+                if isInterpolate: s = " Checked"}}
+                <label for=interpolate><input class=chk type=checkbox name=interpolate id=interpolate value=1{{=s}}> Interpolate</label>
+                {{if timeDetailsFound:}}
+                &middot; <select name=timedetails id=timedetails style="width:150px;" OnChange="SelectTimeDetails();">{{
+                s = ""
+                if timeDetailsPeriod is not None: s = " Checked"
+                options = [("", "View Days"), ("60", "60 minute aggregate"), ("30", "30 minute aggregate"), ("10", "10 minute aggregate"), ("5", "5 minute aggregate"), ("0", "Raw time details")]
+                for o in options:}}
+                    <option value="{{=o[0]}}"{{if o[0] == str(timeDetailsPeriod): response.write(" Selected")}}>{{=o[1]}}</option>
+                {{pass}}
+                </select>
+                {{pass}}
+                </td>
+            </tr>
+
+        </table>
+        </td><td valign=middle style="vertical-align: middle;"><input type=button id=viewgraph value="Apply Filters" style="height:32px;" OnClick="ApplyFilters('');"></td>
+        </tr></table>
+    </form>
+    {{if request.vars.collectionID:
+    u = GetFullUrl().split("?")[-1]
+    }}
+    <div style="text-align:left; font-size:11px;padding-left:10px;">
+    {{if request.vars.graph:}}
+    <font color=crimson style="font-weight:bold">Collection has unsaved changes</font><br>
+    {{pass}}
+     <a href="#" OnClick="ApplyFilters('cmd=savecollection');">Save changes into collection</a>
+    </div>
+
+
+{{elif request.vars.graph or request.vars.keyID:}}
+
+<script>
+function FetchAddToCollectionDropdown()
+{
+    $("#collectionForm").load("FetchAddToCollectionDropdown?{{=XML(GetFullUrl().split("?")[-1])}}");
+    $("#collectionForm").show();
+    //$("#collectionFormToggle").hide();
+}
+</script>
+<a id=collectionFormToggle class="smallbutton" style="padding-left:8px;" OnClick="FetchAddToCollectionDropdown();">Add to collection</a>
+{{pass}}
+
+<a class="smallbutton" OnClick="ShowAddToDigest();">Add to Digest...</a>
+<!--<a class="smallbutton" OnClick="ShowAddToAlert();">Add Alert...</a>-->
+
+<script>
+function ShowAddToDigest(all)
+{
+    {{graphs = ""
+    if isinstance(request.vars.graph, list):
+        for g in request.vars.graph:
+            graphs += "graph=%s&" % g
+        pass
+    else:
+        graphs = "graph=%s&" % request.vars.graph
+    pass
+    }}
+    LoadAddToContainer("digest", "Counters", "{{=XML(graphs)}}title="+encodeURIComponent("{{=XML(digestTitle)}}"), all);
+}
+</script>
+</div> <!--counterform-->
+
+<div id="addtoparentcontainer" style="display:none;"></div>
+
+<div id=collectionForm style="display:none;">
+    <div class=smalltext>Fetching info...</div>
+</div>
+
+
+{{if collection:}}
+{{
+    tagLinkID = collection.collectionID
+    tagLinkType = TAG_COLLECTION
+
+    if collection.userName == session.userName:
+        contentType = "COLLECTION"
+        contentID = tagLinkID
+    pass
+}}
+{{include 'default/TagBox.html'}}
+{{pass}}
+
+{{end}}
+
+<script>
+
+function ShowAllKeys() {
+    $("#keyText").autocomplete("search", "ALL");
+}
+
+function ShowAllSubjects() {
+    $("#subjectText").autocomplete("search", "ALL");
+}
+
+
+$(function() {
+    var cache = {}, lastXhr;
+    $("#keyText").autocomplete({
+        minLength: 2,
+        source: function(request, response) {
+
+            var term = request.term;
+            request.counterID = {{=counterID}}
+            if (term in cache && false) {
+                response(cache[term]);
+                return;
+            }
+
+            lastXhr = $.getJSON("SearchKeys", request, function(data, status, xhr) {
+                cache[term] = data;
+                response($.map(data, function(item) {
+                    return {
+                        label: item.name,
+                        value: item.id
+                    }
+                }));
+            });
+        },
+        select: function(event, ui) {
+            $("#keyText").val(ui.item.label);
+            $("#keyID").val(ui.item.value);
+            return false;
+        }
+    });
+});
+
+$(function() {
+    var cache = {}, lastXhr;
+    $("#subjectText").autocomplete({
+        minLength: 2,
+        source: function(request, response) {
+            var term = request.term;
+            request.counterID = {{=counterID}}
+            if (term in cache && false) {
+                response(cache[term]);
+                return;
+            }
+
+            lastXhr = $.getJSON("SearchSubjects", request, function(data, status, xhr) {
+                cache[term] = data;
+                response($.map(data, function(item) {
+                    return {
+                        label: item.name,
+                        value: item.id
+                    }
+                }));
+            });
+        },
+        select: function(event, ui) {
+            $("#subjectText").val(ui.item.label);
+            $("#subjectID").val(ui.item.value);
+            return false;
+        }
+    });
+});
+</script>
+
+<script>
+
+function AddToCollection() {
+    {{if not session.userName:}}
+    alert('You need to log in to add to a collection');
+    return
+    {{pass}}
+    var collectionID = $("#collectionID").val();
+
+    var name = "";
+    if (collectionID == 0) {
+        name = prompt("What do you want to name your collection?", "My new collection")
+        if (name == null)
+            return;
+        ApplyFilters('cmd=newcollection&collectionName='+name);
+    } else {
+        ApplyFilters('cmd=addtocollection');
+    }
+    $("#collectionName").val(name);
+    //$("#AddToCollectionForm").submit();
+    
+}
+
+function PopulateCombo(comboID, result, pick)
+{
+    var optionsValues = ''
+
+    $.each(result, function(id, name) {
+        s = ""
+        optionsValues += '<option value="' + id + '"' + s + '>' + name + '</option>';
+    });
+    if (optionsValues != "")
+        optionsValues = '<select name=' + comboID + ' id=' + comboID + '><option value="0">( Select Option... )</option>' + optionsValues + '</select>';
+    else
+        optionsValues = '<select name=' + comboID + ' id=' + comboID + '><option value="0">No options available</option>' + optionsValues + '</select>';
+
+    var options = $("#" + comboID);
+    options.replaceWith(optionsValues);
+
+    $("#" + comboID).html($("#" + comboID + " option").sort(function (a, b) {
+        return a.text == b.text ? 0 : a.text < b.text ? -1 : 1
+    }))
+
+    if (pick) {
+        $("#keyID").val('{{=keyID}}');
+        $("#subjectID").val('{{=subjectID}}');
+    } else {
+        $("#keyID").val('0');
+        $("#subjectID").val('0');
+
+    }
+
+}
+
+function PopulateCounterForm(pick)
+{
+    $("#keyText").val("");
+    $("#keyID").val("");
+    $("#subjectText").val("");
+    $("#subjectID").val("");
+    return
+    var counterID = $("#counterID option:selected").val();
+
+    $.getJSON("PopulateCounterForm?counterID=" + counterID,
+        function(data){
+          $.each(data, function(context, dict){
+            PopulateCombo(context, dict, pick)
+          });
+        });
+}
+
+$(document).ready(function() {
+
+    $("#counterID").bind("change", function(e){
+        PopulateCounterForm(false)
+    });
+
+    $(function() {
+        $('#startDate').datepicker( {
+            changeMonth: true,
+            changeYear: true
+        });
+        $('#endDate').datepicker( {
+            changeMonth: true,
+            changeYear: true
+        });
+        $('#annotationdate').datepicker( {
+            changeMonth: true,
+            changeYear: true
+        });
+    });
+
+    $(".tablesorter").tablesorter( {textExtraction: tableSorterSortMethod});
+
+    $(".tb").bind("mouseover", function(e){
+        $(this).attr("src", $(this).attr("src").replace("_off", "_on"));
+    });
+    $(".tb").bind("mouseout", function(e){
+        $(this).attr("src", $(this).attr("src").replace("_on", "_off"));
+    });
+
+    $("#counterform input").bind("keydown", function(event) {
+      if (event.which == 13) {
+         ApplyFilters('');
+       }
+
+    });
+});
+
+// not sure if used
+function SelectGroup(groupID) {
+    $(".chk_" + groupID).attr('checked', $("#parent_" + groupID).attr('checked') == "checked");
+}
+
+function OpenChartMenu(which) {
+
+    $("#chartmenu").menu( "option", "position", { my: "right top", of: which } );
+    $("#chartmenu").show();
+}
+</script>
+<style>
+.ui-menu { }
+
+#chartmenu {
+width: 180px;
+position:absolute; 
+display:none;
+z-index: 100;
+font-size:12px;
+}
+</style>
+<script>
+var currentGear = null;
+var currentGearNumber = null;
+
+function RemoveSelectedChart()
+{
+    GotoActionUrl('RemoveSelectedChart')
+}
+function PullOutSelectedChart()
+{
+    GotoActionUrl('PullOutSelectedChart');
+}
+function MoveSelectedChartToTop()
+{
+    GotoActionUrl('MoveSelectedChartToTop');
+}
+function MoveSelectedChartToBottom()
+{
+    GotoActionUrl('MoveSelectedChartToBottom');
+}
+function MoveSelectedChartUp()
+{
+    GotoActionUrl('MoveSelectedChartUp');
+}
+function MoveSelectedChartDown()
+{
+    GotoActionUrl('MoveSelectedChartDown');
+}
+function CopySelectedChart()
+{
+    GotoActionUrl('CopySelectedChart');
+}
+function PasteChartBefore()
+{
+    GotoActionUrl('PasteChartBefore');
+}
+function PasteChartAfter()
+{
+    GotoActionUrl('PasteChartAfter');
+}
+function NormalizeSelectedChart()
+{
+    GotoActionUrl('NormalizeSelectedChart');
+}
+function NormalizeSelectedChartAndRemove()
+{
+    GotoActionUrl('NormalizeSelectedChartAndRemove');
+}
+function ConfigureChart()
+{
+    lineWidth = "";
+    pointSize = "";
+    color = "";
+    title = "";
+    maxValue = "";
+    minValue = "";
+    chartType = "";
+    markerStyle = "";
+    yMult = "";
+    lineStyle = "";
+    axis = "";
+    interval = "";
+    opacity = "";
+    n = "#cfg" + currentGearNumber
+    cfg = $(n).val()
+    cfg = eval('(' + cfg + ')');
+    for (var e in cfg) {
+        if (e == "lineWidth")
+            lineWidth = cfg[e]
+        if (e == "pointSize")
+            pointSize = cfg[e]
+        if (e == "color")
+            color = cfg[e]
+        if (e == "title")
+            title = cfg[e]
+        if (e == "maxValue")
+            maxValue = cfg[e]
+        if (e == "minValue")
+            minValue = cfg[e]
+        if (e == "chartType")
+            chartType = cfg[e]
+        if (e == "markerStyle")
+            markerStyle = cfg[e]
+        if (e == "yMult")
+            yMult = cfg[e]
+        if (e == "lineStyle")
+            lineStyle = cfg[e]
+        if (e == "axis")
+            axis = cfg[e]
+        if (e == "opacity")
+            opacity = cfg[e]
+        if (e == "interval")
+            interval = cfg[e]
+
+    }
+    $("#configdialog").data('number', currentGearNumber);
+    $("#configdialog").data('lineWidth', lineWidth);
+    $("#configdialog").data('pointSize', pointSize);
+    $("#configdialog").data('color', color);
+    $("#configdialog").data('title', title);
+    $("#configdialog").data('color', color);
+    $("#configdialog").data('minValue', minValue);
+    $("#configdialog").data('maxValue', maxValue);
+    $("#configdialog").data('chartType', chartType);
+    $("#configdialog").data('markerStyle', markerStyle);
+    $("#configdialog").data('lineStyle', lineStyle);
+    $("#configdialog").data('yMult', yMult);
+    $("#configdialog").data('axis', axis);
+    $("#configdialog").data('opacity', opacity);
+    $("#configdialog").data('interval', interval);
+    $("#configdialog").dialog('open');
+}
+function GotoActionUrl(act)
+{
+    Goto('{{=XML(GetCurrentUrlWithout("action"))}}action='+act+'&actionContext=' + currentGear)
+}
+</script>
+<ul id="chartmenu">
+<li><a href="#" OnClick="ConfigureChart();"><b>Configure Chart</b></a></li>
+<li><a href="#" OnClick="RemoveSelectedChart();">Remove this chart</a></li>
+<li><a href="#" OnClick="PullOutSelectedChart();">Show only this chart</a></li>
+<li><a href="#" OnClick="MoveSelectedChartToTop();">Move chart to top</a></li>
+<li><a href="#" OnClick="MoveSelectedChartToBottom();">Move chart to bottom</a></li>
+<li><a href="#" OnClick="MoveSelectedChartUp();">Move chart up</a></li>
+<li><a href="#" OnClick="MoveSelectedChartDown();">Move chart down</a></li>
+<li><a href="#" OnClick="CopySelectedChart();">Copy chart</a></li>
+<li><a href="#" OnClick="PasteChartBefore();">Paste before this chart</a></li>
+<li><a href="#" OnClick="PasteChartAfter();">Paste after this chart</a></li>
+<li><a href="#" OnClick="NormalizeSelectedChart();">Normalize by this chart</a></li>
+<li><a href="#" OnClick="NormalizeSelectedChartAndRemove();">Normalize and remove</a></li>
+</ul>
+
+ <script>
+      $(function () {
+          $("#chartmenu").menu();
+          $(".gear").on("click", function (event) {
+            $("#chartmenu").show();
+              $("#chartmenu").position({
+                  my: "left top",
+                  of: $(event.target),
+              });
+              //$("#chartmenu").css("left", "auto");
+              //alert("old gear is " + currentGear)
+              thisGear = $(event.target).attr("id").replace("gear_", "")
+              lst = thisGear.split(":")
+              idx = parseInt(lst[0])+1
+              thisGear = lst[1]
+              if (thisGear == currentGear) {
+                $("#chartmenu").hide();
+                currentGear = null;
+                currentGearNumber = null;
+              } else {
+                currentGear = thisGear;
+                currentGearNumber = idx;
+              }
+              return false;
+          });
+      });
+    function SelectTimeDetails()
+    {
+        if ($("#timedetails").val() != "") {
+            if (parseInt($("#numDays").val()) > 30) {
+                alert("It is highly recommended that you select 30 days or fewer when showing time details");
+            }
+        }
+    }
+</script>

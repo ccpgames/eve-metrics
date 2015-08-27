@@ -1,0 +1,47 @@
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+
+<title>{{=response.title or request.application}}</title>
+{{
+digestTitle = ""
+response.files.append(URL('static','css/skeleton.css'))
+response.files.append(URL('static','css/web2py.css'))
+response.files.append(URL('static','css/superfish.css'))
+response.files.append(URL('static','css/tablesorter.css'))
+response.files.append(URL('static','css/jquery.tagbox.css'))
+response.files.append(URL('static','js/superfish.js'))
+response.files.append(URL('static','jqueryui/css/redmond/jquery-ui-1.8.17.custom.css'))
+
+# http://shjs.sourceforge.net/
+response.files.append(URL('static','css/sh/sh_ide-msvcpp.css'))
+}}
+{{include 'web2py_ajax.html'}}
+</head>
+<body class=bod{{if request.vars.refresh: response.write(XML(" onload=\"JavaScript:timedRefresh(%s);\"" % (int(request.vars.refresh) * 60000)))}}>
+{{if request.vars.title:}}
+<h4 style="text-align:left; font-weight:bold;padding-left:10px;font-size:{{=request.vars.titleSize or 16}}px;margin-bottom:15px;">{{=request.vars.title}}</h4>
+{{pass}}
+{{
+controlID = 1
+currCharts = charts
+if not request.vars.w: graphWidth = "100%%"
+showTitle = False if len(charts) == 1 or viewMode.startswith("singlegraph") else True}}
+{{if viewMode.startswith("singlegraph"):
+    controlID = 1
+    currCharts = copy.copy(charts)}}
+<div style="width:{{=graphWidth}};">
+    {{include 'default/MultiChart.html'}}
+</div>
+{{elif not isTable:
+    for i, chart in enumerate(charts):
+        currCharts = [copy.copy(chart)]
+        controlID = i}}
+        <div style="width:{{=graphWidth}};">
+        {{include 'default/MultiChart.html'}}
+        </div>
+    {{pass}}
+{{pass}}
+</body>
+</html>

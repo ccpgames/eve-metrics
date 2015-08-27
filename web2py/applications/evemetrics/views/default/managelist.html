@@ -1,0 +1,72 @@
+<h3>Manage {{=context}}</h3>
+
+<table id=ordertable class="zebra datatable">
+
+{{
+lastGroupID = -1
+countersOrCollections = counters if "counters" in globals() else collections
+for counter in countersOrCollections:
+	if lastGroupID != counter.groupID:}}
+		<tr class="nodrag" id="group_{{=counter.groupID}}"><td style="font-weight:bold; font-size:14px; background-color:#99A4B1; color:white; padding:5px;" colspan=4><a href="{{=("Reports" if context == "Counters" else "Collections")}}?groupID={{=counter.groupID}}"><font color=white>{{=counter.groupName or "[Ungrouped]"}}</font></a></td></tr>
+		{{lastGroupID = counter.groupID
+	pass
+	title = counter.name
+	n = ""
+	if counter.NUM: n = " (%s child%s)" % (counter.NUM, "ren" if counter.NUM > 1 else "")
+	try:
+	  counterIdentifier = counter.counterIdentifier
+	except:
+	  counterIdentifier = None
+	pass
+	}}
+	<tr id="cc_{{=counter.theID}}" style="border-bottom:0px solid #779999;">
+	<td style="background-image:url('{{=URL("static/images/gripblue2.png")}}'); background-repeat:no-repeat; background-position:center;"></td>
+	<td>{{=XML(title)}}{{=n}}</td>
+	<td>{{if counterIdentifier: response.write(counterIdentifier)}}</td>
+	<td style="text-align:right; width:1%">
+	<nobr>
+	{{if context == "Counters":}}
+	<a href="EditCounter?counterID={{=counter.theID}}">edit</a>&nbsp;
+	{{else:}}
+	<a href="EditCollection?collectionID={{=counter.theID}}">edit</a>&nbsp;
+	{{pass}}
+	</nobr>
+	</td>
+	</tr>
+{{pass}}
+</table>
+<a href="/ManageGroups">Manage / Reorder groups</a>
+{{if context == "Counters":}}
+	&middot; <a href="/EditCounter?counterID=0">Add Counter</a>
+{{pass}}
+<span id=working style="display:none;"> <font color=green><i>Working...</i></font></span>
+<script>
+$(document).ready(function() {
+	$("#ordertable").tableDnD({
+	    onDragClass: "dragging",
+	    onDrop: function(table, row) {
+            var rows = table.tBodies[0].rows;
+            ids = ""
+            var groupID = 0;
+            for (var i=0; i<rows.length; i++) {
+            	var idd = rows[i].id;
+            	if (idd.indexOf("group") >= 0) {
+            		groupID = idd.split("_")[1];
+            	} else if (idd.indexOf("_") >= 0) {
+            		var l = idd.split("_");
+	                ids += groupID + ":" + l[1] + ",";
+	            }
+            }
+	        $("#ordertable tr:even").addClass('alt');
+	        $("#ordertable tr:odd").removeClass('alt');
+	        url = "Order{{=context}}DragDrop?order=" + ids
+	        $("#working").appendTo($(row).children()[1]);
+	        $("#working").show();
+	        $.getScript(url);
+	    },
+		onDragStart: function(table, row) {
+
+		}
+	});
+});
+</script>

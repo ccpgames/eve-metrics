@@ -1,0 +1,47 @@
+{{extend 'layout.html'}}
+<h3>Order graphs for collection: <a href="Counters?collectionID={{=collection.collectionID}}">{{=collection.collectionName}}</a></h3>
+
+
+<table id=ordertable class="zebra datatable">
+<tr class="nodrop nodrag">
+<th>&nbsp;</th><th>Table Name</th><th>Subject</th><th>Key</th><th>Label</th><th>Aggregate</th><th>Goal</th><th>Severity</th><th>&nbsp;</th>
+</tr>
+
+{{for counter in collection.counters:}}
+	<tr id="cc_{{=counter.collectionCounterID}}" style="border-bottom:0px solid #779999;">
+	<td style="background-image:url('static/images/gripblue2.png'); background-repeat:no-repeat; background-position:center;"></td>
+	<td>{{=counter.groupName}} - {{=counter.counterName}}</td>
+	<td>{{=counter.subjectText or counter.columnName or ""}}</td>
+	<td>{{=counter.keyText or ""}}</td>
+	<td>{{=counter.label}}</td>
+	<td>{{=counter.aggregateFunction}}</td>
+	<td>{{=counter.goal}} / {{=counter.goalType}} / {{=counter.goalDirection}}</td>
+	<td>{{=counter.severityThreshold}}</td>
+	<td style="text-align:right;"><a href="RemoveFromCollection?collectionCounterID={{=counter.collectionCounterID}}" OnClick="return confirm('Are you sure?');">remove</a></td>
+	</tr>
+{{pass}}
+</table>
+
+<script>
+$(document).ready(function() {
+	$("#ordertable").tableDnD({
+	    onDragClass: "dragging",
+	    onDrop: function(table, row) {
+            var rows = table.tBodies[0].rows;
+            ids = ""
+            for (var i=0; i<rows.length; i++) {
+            	var idd = rows[i].id;
+            	if (idd.indexOf("_") >= 0)
+	                ids += idd.split("_")[1]+",";
+            }
+	        $("#ordertable tr:even").addClass('alt');
+	        $("#ordertable tr:odd").removeClass('alt');
+	        url = "OrderCollectionDragDrop?order=" + ids
+	        $.getScript(url);
+	    },
+		onDragStart: function(table, row) {
+
+		}
+	});
+});
+</script>

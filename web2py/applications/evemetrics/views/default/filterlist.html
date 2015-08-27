@@ -1,0 +1,281 @@
+{{
+	context = GetMethod()
+	COOKIE_SHOWGROUPS = "showgroups_%s" % context
+	COOKIE_FILTER = "filter_%s" % context
+}}
+<style>
+#taglistbox {
+    float:right;
+    //position:absolute; 
+    top:68px;
+    right:20px;
+    border:1px solid #EEEEEE;
+    padding:5px;
+    background-color:#F3F3F3;
+}
+.fade {
+    opacity:0.5;
+}
+#taglistboxlist {
+    margin:0px;
+    padding:0px;
+    list-style-type: none;
+}
+#taglistboxlist li {
+    line-height: 11px; 
+}
+</style>
+<div id=taglistbox class="smallertext fade" title="Filter by tag">
+<ul id=taglistboxlist>
+{{for t in foundTags:}}
+<li OnClick="Filter('tag:{{=t}}');" class=link>{{=t}}</li>
+{{pass}}
+</ul>
+</div>
+<input type=search placeholder="Search..." id=search OnKeyUp="TypeSearch();" OnSearch="TypeSearch();" value="">
+<div class=normaltext id=expandcollapse><span class=link OnClick="ShowAll();">Expand All</span> &middot; <span class=link OnClick="HideAll();">Collapse All</span></div>
+
+{{def WriteTags(cID):
+    theseTags = tags.get(cID, [])
+for t in theseTags:
+    response.write(XML(" <img src=\"%s\" height=14 hspace=2 class=\"middleimg tt fade\" title=\"tag:%s by %s\">" % (URL("static/images/tag2.png"), t[0], t[1])))
+pass}}
+
+{{pass
+def WriteProperLink(c):
+    if tagType == TAG_DASHBOARD:
+        return WriteDashboardLink(c)
+    elif tagType == TAG_COLLECTION:
+        return WriteCollectionLink(c)
+    return "Unknown"
+pass}}
+{{for k, groupContents in groups.iteritems():
+	gID = k[0]
+	isCounter = (k[2] == TAG_REPORT)
+	c = []
+	if COOKIE_SHOWGROUPS in request.cookies: c = request.cookies[COOKIE_SHOWGROUPS].value.split("_")
+	d = "none"
+	if str(gID) in c or request.vars.groupID:
+		d = "block"
+	pass
+	gl = ""
+	if not request.vars.groupID:
+		gl = XML("<a href=\"%sgroupID=%s\" title=\"Show only this group\"><img src=\"%s\" class=middleimg>" % (GetFullUrlWithout("groupID"), gID, URL("static/images/element_into.png")))
+	pass
+	}}
+	<div class=grouplink id="group_{{=gID}}_link">
+	<h4><span class="link grouplinktext" OnClick="ToggleGroup({{=gID}});">{{=k[1]}}</span> {{=gl}}</a></h4>
+	<div id="group_{{=gID}}" class=group style="display:{{=d}};">
+	<ul>
+		{{for c in groupContents:
+            if c.restricted: continue
+			if isCounter:
+				cc = ""
+				if c.parentID: continue}}
+				<li class=desc style="{{=cc}}">{{=WriteCounterLink(c)}} &nbsp; {{WriteTags(c.entityID)}}</li>
+				{{for c2 in groupContents:
+					cc = "margin-left:20px;font-size:12px;"
+					if int(c2.parentID or 0) == int(c.entityID or 0):}}
+						<li class=desc style="{{=cc}}">{{=WriteCounterLink(c2)}} &nbsp; {{WriteTags(c2.entityID)}}</li>
+					{{pass}}
+				{{pass
+			else:}}
+			     <li class=desc>{{=WriteProperLink(c)}} {{WriteTags(c.entityID)}}</li>
+			{{pass
+		pass}}
+	</ul>
+	</div>
+	</div>
+{{pass}}
+
+{{if request.vars.groupID:}}
+	<a href="{{=GetMethod()}}">Show all</a>
+{{pass}}
+
+<br><a href="index" id="permlink" style="display:none;" class=smallertext>Permanent link to these search results</a>
+<script>
+var baseSearchString = "Search...";
+var cookieShowGroups = '{{=COOKIE_SHOWGROUPS}}'
+var cookieFilter     = '{{=COOKIE_FILTER}}'
+
+function Filter(txt) 
+{
+    $("#search").val(txt)
+    Search();
+}
+function ClearSearch(showtext)
+{
+    var searchinput = $("#search");
+    var t = ""
+    if (showtext) {
+        t = baseSearchString;
+    }
+    searchinput.val(t);
+    $(".desc").show();
+    $(".group").show();
+    $(".grouplink").show();
+    $("#expandcollapse").show();
+    $("#clearsearch").hide();
+    $("#permlink").hide();
+    $.cookie(cookieFilter, null);
+}
+var tim = null;
+var lastTerm = "";
+function TypeSearch() {
+    thisTerm = $("#search").val();
+    if (thisTerm == lastTerm)
+        return
+    lastTerm = thisTerm;
+    if (tim != null)
+        clearTimeout(tim);
+    tim = setTimeout("Search()", 500);
+}
+
+function Search() {
+    var s = $("#search").val().toLowerCase();
+    if (s == baseSearchString.toLowerCase())
+        s = "";
+    if (s == "") {
+        ClearSearch(false);
+        return;
+    }
+    $.cookie(cookieFilter, s);
+    $("#clearsearch").show();
+    $("#expandcollapse").hide();
+    ShowAll(false);
+    $(".desc").show();
+    $(".group").show();
+    $(".grouplink").show();
+    $("#permlink").show();
+    $("#permlink").attr("href", "{{=XML(GetFullUrlWithout("search"))}}search="+s)
+    $(".desc").each(function(index) {
+        var ss = $(this).html().toLowerCase();
+        if (ss.indexOf(s) >= 0) {
+            $(this).show()
+        } else {
+            $(this).hide()
+
+        }
+    });
+    HideEmptyGroups();
+    $(".grouplinktext").each(function(index) {
+        var ss = $(this).html().toLowerCase();
+        if (ss.indexOf(s) >= 0) {
+            $(this).parent().parent().show();
+            $(this).parent().parent().find('li').show();
+        }
+    });
+}
+
+function HideEmptyGroups() {
+    $(".group").each(function(index) {
+        var gotChildren = false;
+        var id = $(this).attr("id")
+        var $children = $(this).find('li');
+        $children.each(function(index) {
+            if (!$(this).is(':hidden')) {
+                gotChildren = true;
+            }
+        });
+        if (gotChildren) {
+            $("#"+id+"_link").show();
+        } else {
+            $("#"+id+"_link").hide();
+        }
+    });
+}
+
+function ToggleGroup(gID) {
+    g = $("#group_"+gID);
+    if (g.is(':hidden')) {
+        ShowGroup(gID, true);
+    } else {
+        HideGroup(gID, true);
+    }
+}
+
+function HideGroup(gID, persist) {
+    g = $("#group_"+gID);
+    g.hide();
+    var cook = RemoveFromCookie(gID);
+    if (persist)
+        $.cookie(cookieShowGroups, cook, {expires: 365});
+}
+
+function RemoveFromCookie(gID) {
+    var cook = $.cookie(cookieShowGroups);
+    var c = []
+    if (cook != null && cook != "") {
+        c = cook.split("_")
+    }
+    cook = ""
+    for (i = 0; i < c.length; i++) {
+        if (c[i] != gID && c[i] != "") {
+            cook += c[i] + "_"
+        }
+    }
+    return cook;
+}
+
+function ShowGroup(gID, persist) {
+    g = $("#group_"+gID);
+    g.show();
+    var cook = RemoveFromCookie(gID);
+    cook += gID + "_"
+    if (persist)
+        $.cookie(cookieShowGroups, cook, {expires: 365});
+}
+
+function HideAll() {
+    $(".group").each(function(index) {
+        i = $(this).attr("id").split("_")[1]
+        HideGroup(i, true);
+    });
+}
+
+function ShowAll(persist) {
+    $(".group").each(function(index) {
+        i = $(this).attr("id").split("_")[1]
+        ShowGroup(i, true);
+    });
+}
+
+$(function() {
+  $("#search").focus();
+});
+
+$(document).ready(function() {
+    var t = $(".fade")
+    t.mouseover(function(e) {
+        $(this).removeClass("fade");
+    })
+    t.mouseout(function(e) {
+        $(this).addClass("fade");
+    })
+    var searchBoxes = $("#search");  
+    searchBoxes.blur(function(e){  
+        $(this).removeClass("active");  
+        if ($(this).attr("value") == "") {
+            $(this).attr("value", baseSearchString);
+        }
+
+    });  
+    searchBoxes.focus(function(e){  
+        $(this).addClass("active");  
+        if ($(this).attr("value") == baseSearchString) {
+            $(this).attr("value", "");
+        }
+    });
+
+    {{if not request.vars.groupID or request.vars.search:}}
+    c = $.cookie(cookieFilter);
+    {{if request.vars.search:}}
+        c = '{{=request.vars.search}}'
+    {{pass}}
+    if (c != null) {
+        $("#search").val(c);
+        Search();
+    }
+    {{pass}}
+})
+</script>

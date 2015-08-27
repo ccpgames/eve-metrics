@@ -1,0 +1,19 @@
+<html>
+<link href="/evemetrics/static/css/skeleton.css" rel="stylesheet" type="text/css" />
+<link href="/evemetrics/static/css/web2py.css" rel="stylesheet" type="text/css" />
+<body>
+<h1><div style="float:left;margin-right:10px;height:120px;padding-top:10px"><img src="{{=URL("static/images/forbiddenbig.png")}}"></div>Access Denied</h1>
+
+<div>
+{{if int(request.vars.subContent or 0):}}
+The page you requested contains content which has access restrictions.</br>
+{{else:}}
+The page you requested has access restrictions and you are not on the VIP list.<br>
+{{pass}}
+You will need to contact the owner of this page, <span style="font-weight:bold;">{{=ownerUserName.capitalize()}}</span> in order to get access.</div>
+<br>
+<pre>
+<font color=gray>({{=contentType}} / {{=contentID}})</font>
+</pre>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<html>
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+
+  <title>{{=response.title or request.application}}</title>
+ {{
+  response.files.append(URL('static','css/skeleton.css'))
+  response.files.append(URL('static','css/web2py.css'))
+  response.files.append(URL('static','css/superfish.css'))
+  response.files.append(URL('static','css/tablesorter.css'))
+  response.files.append(URL('static','css/jquery.tagbox.css'))
+  response.files.append(URL('static','js/superfish.js'))
+  response.files.append(URL('static','jqueryui/css/redmond/jquery-ui-1.8.17.custom.css'))
+
+  # http://shjs.sourceforge.net/
+  response.files.append(URL('static','css/sh/sh_ide-msvcpp.css'))
+  }}
+  {{include 'web2py_ajax.html'}}
+
+<script>
+function alertSize() {
+  var myHeight = 0;
+  if (typeof (window.innerWidth) == 'number') {
+    //Non-IE
+    myHeight = window.innerHeight;
+    //alert("1. " + myHeight);
+  } else if (parent.document.documentElement
+    && (parent.document.documentElement.clientWidth || parent.document.documentElement.clientHeight)) {
+    //IE 6+ in 'standards compliant mode'
+    myHeight = parent.document.documentElement.clientHeight;
+    alert("2. " + myHeight);
+  }
+  //window.alert( 'Height = ' + myHeight );
+  return myHeight;
+}
+
+function AssignFrameHeight() {
+  var theFrame = $("#ifrm", parent.document.body);
+  var frameHeight1 = getIframeHeight('ifrm');
+  //alert(frameHeight1);
+  var frameHeight2 = $(document.body).height();
+  //alert(frameHeight2);
+  if ($(document.body)[0]) {
+    if ($(document.body)[0].bottomMargin)
+      frameHeight2 += Number($(document.body)[0].bottomMargin);
+    if ($(document.body)[0].topMargin)
+      frameHeight2 += Number($(document.body)[0].topMargin);
+  }
+  if (frameHeight1 > frameHeight2) {
+    theFrame.height(frameHeight1 - 20);
+  } else {
+    if ($.browser.msie)
+      theFrame.height(frameHeight2);
+    else
+      theFrame.height(frameHeight2 + 50);
+  }
+}
+
+function getIframeHeight(iframeName) {
+  //var iframeWin = window.frames[iframeName];
+  var iframeEl = parent.document.getElementById
+    ? parent.document.getElementById(iframeName)
+    : parent.document.all
+      ? parent.document.all[iframeName]
+      : null;
+  if (iframeEl) {
+    //iframeEl.style.height = "auto"; // helps resize (for some) if new doc shorter than previous
+    //var docHt = getDocHeight(iframeWin.document);
+    // need to add to height to be sure it will all show
+    var h = alertSize();
+    //var new_h = (h - 148);
+    //iframeEl.style.height = h + "px";
+    return h;
+    //alertSize();
+  }
+}
+
+// grow parent container to fit us
+// We use a fixed size, we should probably toss this code
+$(document).ready(function() {
+  //AssignFrameHeight();
+});
+
+</script>
+</head>
+<style>
+.bod {
+//background: linear-gradient(to bottom,  rgba(255,255,255,1) 0%,rgba(250,250,250,1) 100%); /* W3C */
+{{if request.vars.background == "noise":}}
+background: url({{=URL("static/images/noise.png")}});
+{{pass}}
+margin-left:12px;
+margin-right:12px;
+zoom="180%"
+}
+</style>
+<body class=bod{{if request.vars.refresh: response.write(XML(" onload=\"JavaScript:timedRefresh(%s);\"" % (int(request.vars.refresh) * 60000)))}}>
+
+{{
+width = graphWidth
+height = graphHeight
+if request.vars.height:
+   height = int(request.vars.height)
+pass
+chartHeight = "85"
+if height < 400: chartHeight = "80"
+controlID = 1
+
+sameGroup = True
+lastGroup = None
+for c in charts:
+  if lastGroup is not None and c["groupName"] != lastGroup: sameGroup = False
+  lastGroup = c["groupName"]
+pass
+sameCounter = True
+lastCounter = None
+for c in charts:
+  if lastCounter is not None and c["counterName"] != lastCounter: sameCounter = False
+  lastCounter = c["counterName"]
+pass
+
+def WriteDataColumn(chart):
+  if sameCounter and chart["chartName"]:
+    n = chart["chartName"];
+  elif sameGroup:
+    n = chart["counterName"]
+    if chart["chartName"]: n += " : " + chart["chartName"]
+  else:
+    n = chart["groupName"] + " / " + chart["counterName"]
+    if chart["chartName"]: n += " : " + chart["chartName"]
+  pass
+  n = re.sub('<[^<]+?>', '', '%s' % n)
+  chartLabel = None
+  if collection and "collectionCounterID" in chart:
+      ccID = chart["collectionCounterID"]
+      for c in collection.counters:
+          if c.collectionCounterID == ccID:
+              chartLabel = c.label
+          pass
+      pass
+  pass
+  if chartLabel: n = chartLabel
+  response.write(XML("  data.addColumn('number', '%s');\n" % n.replace("'", "\\'")))
+pass
+
+}}
+
+<script>
+google.load('visualization', '1.1', {packages: ['corechart']});
+
+function drawVisualization() {
+  var chartData = [
+{{
+    keys = dataForDates.keys()
+    keys.sort()
+    txt = ""
+    for k in keys:
+      lst = str(k).split(" ")[0].split("-")
+      vals = ","
+      values = dataForDates[k]
+      for i in xrange(len(values)-1):
+        vals += "%s," % values[i+1]
+      pass
+      vals = vals[:-1]
+      marker = values[0]
+      txt += "    [%s,%s,%s,'%s','%s'%s],\n" % (lst[0], lst[1], lst[2], marker[0], marker[1], vals)
+    pass
+    txt = txt[:-2]
+    response.write(XML(txt))
+}}
+  ];
+
+  var data = new google.visualization.DataTable();
+  data.addColumn('date', 'Date');           // 1. Date
+
+{{
+WriteDataColumn(charts[0])                # 2. First chart
+}}
+  data.addColumn({type:'string', role:'annotation'});     // 3. Annotation
+  data.addColumn({type:'string', role:'annotationText'}); // 4. Annotation
+{{
+for i in xrange(len(charts)-1):
+    WriteDataColumn(charts[i+1])            # 5+. Rest of the charts
+pass}}
+
+
+  data.addRows(chartData.length);
+  for (i = 0; i < chartData.length; i++) {
+    var d = chartData[i];
+    var dt = new Date(d[0], d[1]-1, d[2]);
+
+    data.setValue(i, 0, dt);              // 1. Date
+
+    data.setValue(i, 1, d[5]);            // 2. First chart
+    data.setValue(i, 2, d[3]);            // 3. Annotation
+    data.setValue(i, 3, d[4]);            // 4. Annotation
+    for (j = 6; j < d.length; j++)
+      data.setValue(i, j-2, d[j]);        // 5+. Rest of the charts
+
+  }
+    // Create and draw the visualization.
+    {{stacked = ("stacked" in viewMode)}}
+    var ac = new google.visualization.{{=chartType}}(document.getElementById('visualization_{{=controlID}}'));
+    ac.draw(data, {
+      {{if stacked:}}
+      isStacked: true,
+      areaOpacity: 0.6,
+      {{elif len(charts) > 1:}}
+      isStacked: false,
+      areaOpacity: 0.1,
+      {{pass}}
+      width: '{{=width}}',
+      height: {{=height}},
+      tooltip: {showColorCode: true, textStyle: {fontSize: 12}},
+      focusTarget: 'category',
+      {{if len(charts) == 1:}}
+      legend: 'none',
+      {{else:}}
+      legend: {textStyle: {fontSize:'11'}, position: 'bottom'},
+      {{pass}}
+      chartArea:{left:60,top:15,width:"{{response.write("87") if "secondaryaxis" in viewMode else response.write("95")}}%",height:"{{=chartHeight}}%"},
+      vAxis: {textStyle: {fontSize:'11'}{{if not zoom: response.write(", minValue: 0.0")}}},
+      hAxis: {textStyle: {fontSize:'11'}},
+      bar: {groupWidth: '85%'},
+      backgroundColor: { fill:'transparent' },
+      series: [{{if "secondaryaxis" in viewMode: response.write("{targetAxisIndex: 1}")}}] 
+    });
+  
+        google.visualization.events.addListener(ac, 'select', function() {
+          // grab a few details before redirecting
+          var selection = ac.getSelection();
+          var row = selection[0].row;
+          var col = selection[0].column;
+          var dt = data.getValue(row, 0);
+          var curr_date = dt.getDate();
+          var curr_month = dt.getMonth() + 1; //months are zero based
+          var curr_year = dt.getFullYear();
+          dt = curr_year + "-" + curr_month + "-" + curr_date;
+          src = "Report?counterID={{=counterID}}&dt="+dt;
+          $("#gotoreport").attr("href", src)
+          $("#chartinteract").show();
+        });
+  }
+  google.setOnLoadCallback(drawVisualization);
+
+</script>
+
+<div id="wrapper">
+<div id="center">
+{{if request.vars.title:}}
+<h4 style="text-align:left; font-weight:bold;">{{=request.vars.title}}</h4>
+{{pass}}
+<div id="visualization_{{=controlID}}" style="width: {{=width}}; height: {{=height}}px;"></div>
+
+</div>
+</div>
+<style>
+#wrapper {
+    width:100%;
+    text-align:center;
+}
+
+#center {
+    {{if request.vars.align == "center":}}
+    display:inline-block;
+    max-width:950px;
+    margin-top:{{=(request.vars.top or 10)}}px;
+    {{pass}}
+}
+</style>
+
+</body>
+</html>

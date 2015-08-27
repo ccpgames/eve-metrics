@@ -1,0 +1,233 @@
+{{extend 'layout.html'}}
+
+<style>
+  .ui-autocomplete {
+    max-height: 300px;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    font-size: 12px;
+  }
+.allbutton {
+    padding: 0px 7px 0px 7px !important;
+}
+.selectcounternotice {
+    font-size: 12px;
+    color:#AAAAAA;
+}
+
+.longinput {
+    width:400px !important;
+}
+</style>
+
+<h3><a href="Digests">Digests</a> > <a href="EditDigest?digestID={{=digestID}}">{{=digestName}}</a> > Edit Alert</h3>
+<form method="POST">
+<div class=formfieldname>Title (optional)</div>
+<input type=text name="alertTitle" value="{{=alertTitle}}" style="width:500px;">
+<div class=formfieldname>Description (optional)</div>
+<textarea id="description" name="description" style="width:500px; height:70px;">{{=description or ""}}</textarea>
+<div class=formfieldname>Severity</div>
+<select name="severity">
+    <option value="3"{{if severity == 3: response.write(" Selected")}}>Alert (high)</option>
+    <option value="2"{{if severity != 3: response.write(" Selected")}}>Warning (low)</option>
+</select>
+<div class=formfieldname>Template</div>
+<select name="templateID">
+    <option value="">Default</option>
+    {{for t in templates:}}
+        <option value="{{=t.templateID}}"
+            {{if templateID == t.templateID: response.write(" Selected")}}
+            style="background-color:{{=t.backgroundColor}}; color:{{=t.color}}"
+        >{{=t.templateName}}</option>
+    {{pass}}
+</select>
+
+<div class=formfieldname>Counter</div>
+<input id="position" name="position" type=hidden value="{{=(position or 0)}}">
+<input id="counterID" name="counterID" type=hidden value="{{=(counterID or 0)}}">
+<input id="counterName" class="longinput" type=text value="{{=counterName}}"> <a class="button allbutton" OnClick="ShowAllCounters();" style="height:20px;" title="Show all counters">...</a> <span class="link normaltext" OnClick="ViewCounter();">view counter</span>
+
+<div class="selectcounternotice">Select counter...</div>
+<div id="subjectdiv">
+<div class=formfieldname>Column</div>
+<input type=hidden id="xSubjectID" value="{{=subjectID}}">
+<select id="subjectID" name="subjectID">
+
+</select>
+</div>
+<div id="keydiv" style="margin-top:10px;">
+    <input type=checkbox id="watchkey"><label for="watchkey" class=normaltext>Watch a specific key</label>
+    <div id="innerkeydiv" style="display:none;">
+        <input id="keyID" name="keyID" type=hidden value="{{=(keyID or "")}}">
+        <input id="keyText" type=text class="longinput" value="{{=(keyText or "")}}"> <a class="button allbutton" OnClick="ShowAllKeys();" style="height:20px;" title="Show all keys">...</a>
+    </div>
+</div>
+
+<div class=formfieldname>Method</div>
+{{methods = [["VALUE", "Fixed Value"], ["PERCENT", "Percentage Change"]]}}
+<select id="method" name=method>
+<option value="">Select an alert Method</option>
+{{for m in methods:}}
+    <option value="{{=m[0]}}"{{if method == m[0]: response.write(" Selected")}}>{{=m[1]}}</option>
+{{pass}}
+</select>
+
+<div id="method_VALUE" class="methods">
+    <div class=formfieldname>Value</div>
+    <input type="text" id="config_VALUE_value" name="config_VALUE_value" value="{{=config.get("value", "")}}" style="width:100px;">
+    <div class=formfieldname>Direction</div>
+    {{d = config.get("dir", "O")}}
+    <select id="config_VALUE_dir" name="config_VALUE_dir" style="width:250px;">
+        <option value="O"{{if d == "O": response.write(" Selected")}}>Alert if counter goes over this value</option>
+        <option value="U"{{if d == "U": response.write(" Selected")}}>Alert if counter goes under this value</option>
+    </select>
+</div>
+<div id="method_PERCENT" class="methods">
+    <div class=formfieldname>Percentage Change</div>
+    <input type="number" id="config_PERCENT_value" name="config_PERCENT_value" value="{{=config.get("value", 100)}}"> %
+    <div class=formfieldname>Minimum Counter Value</div>
+    <input type="number" id="config_PERCENT_minValue" name="config_PERCENT_minValue" value="{{=config.get("minValue", "1000")}}">
+    <div class=formfieldname>Number of Days</div>
+    <input type="number" id="config_PERCENT_days" name="config_PERCENT_days" value="{{=config.get("days", 7)}}">
+</div>
+
+<div style="padding-top:24px"><input type=submit value="Save Alert" style="height:34px;width:160px;"></div>
+<input type=hidden name="duplicate" value="{{=request.vars.duplicate or ""}}">
+</form>
+
+<script>
+
+$('#watchkey').bind('change', function() {
+    WatchKeyChange();
+});
+$('#method').bind('change', function() {
+    RefreshMethod();
+});
+function RefreshMethod() {
+    $(".methods").hide();
+    var m = $("#method").val();
+    $("#method_"+m).show();
+}
+
+function WatchKeyChange() {
+    if ($('#watchkey').prop('checked')) {
+        $("#innerkeydiv").show();
+    } else {
+        $("#innerkeydiv").hide();
+    }
+
+}
+
+function RefreshKey() {
+    var counterID = $("#counterID").val();
+    if (counterID == 0)
+        return;
+
+    if ($("#keyID").val() != "") {
+        $('#watchkey').prop('checked', true)
+    }
+
+    WatchKeyChange();
+}
+
+function RefreshSubject() {
+    var counterID = $("#counterID").val();
+    if (counterID == 0) {
+        $(".selectcounternotice").show();
+        $("#subjectdiv").hide();
+        $("#keydiv").hide();
+    } else {
+        $(".selectcounternotice").hide();
+        $("#subjectdiv").show();
+        $("#keydiv").show();
+        $.getJSON("GetColumnsForCounter?counterID="+counterID, function(data, status, xhr) {
+            var items = [];
+            var s = $('#subjectID');
+            s.empty()
+            s.append($("<option />").val("").text("All columns"));
+            $.each(data, function(i, item) {
+                s.append($("<option />").val(item[0]).text(item[1]));
+            });
+            var subjectID = $("#xSubjectID").val();
+            s.val(subjectID)
+        });
+    }
+}
+
+function ViewCounter() {
+    var counterID = $("#counterID").val();
+    if (counterID == 0) {
+        alert("No counter selected")
+        return;
+    }
+    window.open("Report?counterID="+counterID, "report")
+}
+function ShowAllCounters() {
+    $("#counterName").autocomplete("search", "ALL");
+}
+
+
+function ShowAllKeys() {
+    $("#keyText").autocomplete("search", "ALL");
+}
+
+$(function() {
+    var cache = {}, lastXhr;
+    $("#counterName").autocomplete({
+        minLength: 2,
+        source: function(request, response) {
+
+            var term = request.term;
+
+            lastXhr = $.getJSON("SearchCounters", request, function(data, status, xhr) {
+                cache[term] = data;
+                response($.map(data, function(item) {
+                    return {
+                        label: item.name,
+                        value: item.id
+                    }
+                }));
+            });
+        },
+        select: function(event, ui) {
+            $("#counterName").val(ui.item.label);
+            $("#counterID").val(ui.item.value);
+            RefreshSubject();
+            return false;
+        },
+        open: function() {
+            $('.ui-autocomplete').css('width', '400px');
+        }
+    });
+});
+$(function() {
+    $("#keyText").autocomplete({
+        minLength: 2,
+        source: function(request, response) {
+
+            var term = request.term;
+            request.counterID = $("#counterID").val()
+            $.getJSON("SearchKeys", request, function(data, status, xhr) {
+                response($.map(data, function(item) {
+                    return {
+                        label: item.name,
+                        value: item.id
+                    }
+                }));
+            });
+        },
+        select: function(event, ui) {
+            $("#keyText").val(ui.item.label);
+            $("#keyID").val(ui.item.value);
+            return false;
+        }
+    });
+});
+RefreshSubject();
+RefreshKey();
+RefreshMethod();
+</script>
+<div style="padding-top:18px">
+<a href="TestDigestAlert?alertID={{=alertID}}&digestID={{=digestID}}">Test Alert</span> &middot; 
+<a href="EditDigestAlert?alertID={{=alertID}}&digestID={{=digestID}}&duplicate=1">Duplicate Alert</a>
+</div>

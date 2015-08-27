@@ -1,0 +1,108 @@
+<h4>
+  {{if chartLabel:}}
+  <span style="font-weight:bold; padding-left:10px;">{{=chartLabel}}</span>
+  {{else:}}
+  <a class=tt href="Reports?groupID={{=groupID}}">{{=groupName}}</a> /
+  <a class=tt href="Report?counterID={{=counterID}}" title="{{=FmtText(counterDescription)}}">{{=counterName}}</a>
+{{if chartName:}}
+  : {{=XML(chartName)}}
+{{pass}}
+{{pass
+if len(charts) > 0:
+  g = "%s_%s_%s" % (chart["counterID"], chart["subjectID"], chart["keyID"])
+  }}
+<div style="float:right; vertical-align:bottom;">
+  <img id="gear_{{=chartNumber}}:{{=g}}" src="{{=URL("static/images/gear.png")}}" title="Options for this chart" class=gear style="margin-top:8px;">
+</div>
+{{pass}}
+</h4>
+
+{{
+width = graphWidth
+height = graphHeight
+
+chartHeight = "85"
+if height < 400: chartHeight = "80"
+
+goal = request.vars.goal
+n = chart["groupName"] + " / " + chart["counterName"] + " : " + chart["chartName"]
+n = re.sub('<[^<]+?>', '', n)
+unformattedSeriesName = CutAt(n, 140).replace("'", "\\'").replace("\r", "").replace("\n", "")
+vAxisTitle = chart["config"].get("title", "")
+vAxisTitleSize = 11 if vAxisTitle else 12
+}}
+
+<div id="container_{{=controlID}}" style="min-width: {{=width}}px; height: {{=height+100}}px; margin: 0 auto"></div>
+
+<script>
+//
+$(function () {
+        $('#container_{{=controlID}}').highcharts({
+            chart: {
+                type: '{{=chartType.replace("Chart", "").lower()}}',
+                zoomType: 'x',
+            },
+            title: {
+                text: ""
+            },
+            scrollbar: {
+                enabled: true
+            },
+            credits: {
+                  enabled: false
+              },
+            xAxis: {
+                type: 'datetime',
+                events: {
+                  setExtremes: function() {$('.highcharts-scrollbar').show()}
+                }
+            },
+            yAxis: [{
+                title: {
+                    text: '{{=vAxisTitle}}'
+                }
+            },
+            {
+                title: {
+                    text: '{{=vAxisTitle}}'
+                }
+            },
+            ],
+            tooltip: {
+                pointFormat: '{series.name}: <b>{point.y:,.0f}</b><br>',
+            },
+            plotOptions: {
+                area: {
+                    marker: {
+                        enabled: false,
+                        symbol: 'circle',
+                        radius: 2,
+                        states: {
+                            hover: {
+                                enabled: true
+                            }
+                        }
+                    }
+                },
+                series: {
+                    animation: false
+                }
+            },
+            series: [
+            {{for series in charts:}}
+            {
+                name: '{{=unformattedSeriesName}}',
+                data: [ {{=XML(chart["seriesTxt"])}} ],
+                yAxis: 0,
+                color: '#FF66FF',
+                fillOpacity: 0.1,
+            }, 
+            {{pass}}
+
+            ]
+        });
+    });
+$( document ).ready(function() {
+  $(".highcharts-scrollbar").hide()
+});
+</script>

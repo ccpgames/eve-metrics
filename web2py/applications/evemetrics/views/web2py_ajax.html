@@ -1,0 +1,28 @@
+<script type="text/javascript"><!--
+    // These variables are used by the web2py_ajax_init function in web2py_ajax.js (which is loaded below).
+    var w2p_ajax_confirm_message = "{{=T('Are you sure you want to delete this object?')}}";
+    var w2p_ajax_date_format = "{{=T('%Y-%m-%d')}}";
+    var w2p_ajax_datetime_format = "{{=T('%Y-%m-%d %H:%M:%S')}}";
+    //--></script>
+{{
+response.files.insert(0,URL('static','js/jquery.js'))
+response.files.insert(1,URL('static','js/jquery.tablesorter.js'))
+response.files.insert(2,URL('static','css/calendar.css'))
+response.files.insert(3,URL('static','js/calendar.js'))
+response.files.insert(4,URL('static','js/web2py.js'))
+response.files.insert(5,URL('static','jqueryui/js/jquery-ui-1.8.17.custom.min.js'))
+response.files.insert(6,URL('static','js/evemetrics.js'))
+response.files.insert(7,URL('static','js/jquery.tablednd_0_5.js'))
+response.files.insert(8,URL('static','js/jquery.tagbox.js'))
+response.files.insert(9,URL('static','js/easyTooltip.js'))
+response.files.insert(10,URL('static', 'js/jquery.cookie.js'))
+response.files.insert(11,URL('static', 'js/sh_main.min.js'))
+response.files.insert(12,URL('static', 'js/lang/sh_sql.min.js'))
+
+response.files.insert(13, URL('static', 'highstocks/js/highstock.js'))
+response.files.insert(14, URL('static', 'highcharts/js/highcharts-more.js'))
+response.files.insert(15,URL('static', 'js/jquery.filtertable.min.js'))
+
+response.include_meta()
+response.include_files()
+}}

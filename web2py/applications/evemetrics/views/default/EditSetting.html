@@ -1,0 +1,11 @@
+{{extend 'layout.html'}}
+
+<h3>Edit Setting <font color=green>{{=group}} - {{=key}}</font></h3>
+
+<form method=POST action=EditSetting>
+	<input type=hidden name=group value="{{=group}}">
+	<input type=hidden name=key value="{{=key}}">
+	<textarea name=value cols=90 rows=10>{{=value}}</textarea>
+	<br>
+	<input type=submit name=send value="Submit Change">
+</form>

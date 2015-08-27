@@ -1,0 +1,19 @@
+{{extend 'layout.html'}}
+<h3>Edit Group</h3>
+<style>
+.formfieldname {
+	color:gray;
+	font-size:12px;
+	padding-top:5px;
+}
+</style>
+
+<form method=post action=EditGroup>
+<input type=hidden name=groupID value="{{=groupID or 0}}">
+<div class=formfieldname>Name</div>
+<input type=text name=name value="{{=name}}">
+<div class=formfieldname>Description (optional)</div>
+	<textarea id=description name=description style="width:500px; height:150px;">{{=description or ""}}</textarea>
+<div style="padding-top:16px;"><input type=submit value="Submit"></div>
+
+</form>

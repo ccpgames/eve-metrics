@@ -1,0 +1,212 @@
+{{
+    condensed = 0
+    if request.vars.condensed is not None and request.vars.condensed != "":
+        condensed = int(request.vars.condensed)
+    else:
+        condensed = config.get("condensed", 0)
+    pass
+}}
+<!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
+<script src="/static/d3/d3.min.js"></script>
+<style>
+.collection {
+    margin-bottom:30px;
+    //float:left;
+    width:100%
+}
+.details {
+    background-color:AliceBlue;
+}
+td {
+    font-size:13px;
+    vertical-align: middle;
+}
+.val {
+    font-size:13px;
+    padding-right:15px;
+    padding-left:5px;
+    text-align:right;
+    width:100px;
+    vertical-align: middle;
+}
+.lastweek {
+    background-color:#EFEFEF;
+    font-weight:bold !important;
+    border-left:1px solid #999999;
+}
+.selectedlink {
+    font-weight:bold;
+}
+.hd {
+    font-size:13px;
+    padding-right:15px;
+    padding-left:10px;
+    text-align:right;
+    width:70px;
+    font-weight:normal;
+    border-bottom:1px solid #999999;
+    white-space:nowrap;
+}
+.trendarrow {
+    float:left;
+}
+.line {
+    fill: none;
+    stroke: SteelBlue;
+    stroke-width: 1px;
+}
+.trend {
+    width:20px;
+    //background-color: white;
+}
+.dot {
+  stroke: SteelBlue      ;
+  fill:SteelBlue      ;
+}
+.over {
+    background-color:#EFEFFF;
+}
+.label {
+    //cursor:pointer;
+    font-weight:bold;
+    //color:#003399;
+}
+
+li {
+    float: left;
+    margin-left:20px;
+}
+
+.dashboarddiv {
+    padding-bottom:20px;
+}
+</style>
+<script>
+function DrawTrendLine(which, vals, numColumns) {
+    var w = 80;
+    var h = 30;
+    var size = {width:w, height:h};
+    var svg = d3.select(which).append('svg')
+            .attr('width',size.width)
+            .attr('height',size.height).attr('fill','transparent');
+
+    var svgSmall = svg.append('g')//.attr('transform','scale(0.5)');
+    svgSmall.append('rect').attr('width', w).attr('height',h)
+
+    var rnd = d3.random.normal();
+
+    var x = d3.range(numColumns);
+    var y = []
+    for (i = 0; i < Math.min(vals.length, numColumns); i++)
+        y[y.length] = vals[i];
+
+    var data = d3.zip(x, y);
+
+    var xscale = d3.scale.linear().range([5, w-5]).domain(d3.extent(x));
+    var yscale = d3.scale.linear().range([h-5, 5]).domain(d3.extent(y));
+
+    var line = d3.svg.line().x(function(d){return xscale(d[0])}).y(function(d){return yscale(d[1])});
+
+    svgSmall.selectAll("dot").data(data).enter().append("circle").attr("r", 2).attr("class", "dot").attr("cx", function(d) { return xscale(d[0]); }).attr("cy", function(d) { return yscale(d[1]); })
+    svgSmall.append('path').datum(data).attr('d', line).attr('class','line')
+    //svgSmall.transition().delay(5000).ease('quad');
+}
+
+function GotoDate(what) {
+    dt = $(what).val();
+    Goto('{{=XML(GetFullUrlWithout("dt"))}}dt=' + dt);
+}
+
+function ToggleLabel(which) {
+    $(which).hide();
+    $(which).siblings().show();
+}
+
+function ToggleDetails(which) {
+    var e = $(which);
+    var on = false;
+    var img = "asc2.png"
+    if (e.attr("src").indexOf("asc2") >= 0) {
+        on = true;
+        img = e.attr("src").replace("asc2.png", "asc.png")
+    } else {
+        img = e.attr("src").replace("asc.png", "asc2.png")
+    }
+    e.attr("src", img)
+    while (e.prop("tagName") != "TR") {
+        e = e.parent();
+    }
+    if (on)
+        e.next().hide();
+    else
+        e.next().show();
+}
+
+function ToggleAllDetails() {
+    $(".detailsrow").toggle();
+}
+
+function FilterDashboard() {
+    var filter = prompt("What would you like to filter on?")
+    if (filter == null)
+        return;
+    Goto('{{=XML(GetFullUrlWithout("filter"))}}filter=' + filter);
+}
+function LoadCollection(collectionID, hidetitle) {
+    {{
+        if request.vars.days:
+            config["numDays"] = int(request.vars.days)
+        pass
+        cfg = ""
+        for k, v in config.iteritems():
+            cfg += "&%s=%s" % (k, v)
+        pass
+    }}
+    url = "Fetch{{if condensed: response.write("Condensed")}}DashboardCollection?collectionID=" + collectionID + "&dt={{=dt}}&hidetitle=" + hidetitle + "&embedded={{=request.vars.embedded or ""}}&filter={{=request.vars.filter or ""}}{{=XML(cfg)}}";
+    $("#collection_" + collectionID).load(url, function() {
+        SetTrendMouseOver();
+    });
+}
+function SetTrendMouseOver() {
+    $('.trend').mouseover(function() {
+        $(this).addClass("over")
+    });
+    $('.trend').mouseout(function() {
+        $(this).removeClass("over")
+    });
+}
+</script>
+{{
+
+    c = 0
+    data = {}
+    for collectionID in collectionIDs:
+        hidetitle = request.vars.hidetitle or ""
+        if len(collectionIDs) > 1: hidetitle = ""}}
+        <div class=collection id="collection_{{=collectionID}}">
+            <center style="padding:70px;"><img src="{{=URL("static/images/collectionloader.gif")}}"></center>
+            <script>LoadCollection({{=collectionID}}, '{{=hidetitle}}');</script>
+        </div>
+    {{pass}}
+
+<script>
+    {{for i in xrange(c):
+        d = data[i]}}
+        DrawTrendLine("#trend_{{=i}}", [{{=d[0] or 0}},{{=d[1] or 0}},{{=d[2] or 0}},{{=d[3] or 0}},{{=d[4] or 0}}]);
+    {{pass}}
+
+    $(function() {
+        $("#datepicker").datepicker({
+            showOn: "button",
+            buttonImage: '{{=URL("static/images/calendar.png")}}',
+            buttonImageOnly: true,
+            dateFormat: "yy-mm-dd",
+            changeMonth: true,
+            changeYear: true
+        });
+    });
+
+$(document).ready(function() {
+
+});
+</script>

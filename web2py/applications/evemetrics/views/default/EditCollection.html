@@ -1,0 +1,445 @@
+{{extend 'layout.html'}}
+<h3>
+{{if request.vars.new:}}
+	Please give us some information about your new collection
+{{else:}}
+	Edit collection
+{{pass}}
+</h3>
+<style>
+.dragHandle {
+	cursor:move;
+}
+.spacedout {
+	margin-bottom:10px !important;
+}
+.changed {
+	color:brown;
+	font-weight:bold;
+}
+td {
+	white-space:nowrap;
+}
+.injectlink {
+    color:#0069D6;
+	cursor:pointer;
+	font-size:10px;
+	padding-left:5px;
+}
+
+.header {
+	padding-top:10px;
+	border-bottom:1px solid #CDCDCD;
+	width:500px;
+}
+</style>
+
+<script>
+function EditCollectionCounter(collectionCounterID)
+{
+	$("#dialog-form")
+		.data('collectionCounterID', collectionCounterID)
+		.dialog("open");
+}
+
+function InjectText(fieldName, text) {
+	$("#"+fieldName).val($("#"+fieldName).val() + text)
+}
+</script>
+
+
+<div id="dialog-form" title="Edit Collection Counter">
+<form>
+<label for="label" class=normaltext>Label</label>
+<div style="float:right"><input name="label_all" id="label_all" type=checkbox> <label for="label_all" class=normaltext>all</label></div>
+
+<br>
+<input type="text" name="label" id="label" class=spacedout><span class=injectlink OnClick="InjectText('label', '(subject)');">subject</span> &middot; <span class=injectlink OnClick="InjectText('label', '(key)');">key</span>
+<br>
+<label for="aggregateFunction" class=normaltext>Aggregate Function</label>
+<div style="float:right"><input name="aggregateFunction_all" id="aggregateFunction_all" type=checkbox> <label for="aggregateFunction_all" class=normaltext>all</label></div>
+<br>
+<select name="aggregateFunction" id="aggregateFunction" class=spacedout style="width:120px;">
+	{{for o in [("AVG", "Average"), ("SUM", "Sum"), ("MAX", "Maximum Value"), ("MIN", "Minimum Value"), ("LAST", "Last Value"), ("FIRST", "First Value")]:}}
+		<option value="{{=o[0]}}">{{=o[1]}}</option>
+	{{pass}}
+</select>
+<br>
+<label for="goal" class=normaltext>Goal</label>
+<div style="float:right"><input name="goal_all" id="goal_all" type=checkbox> <label for="goal_all" class=normaltext>all</label></div>
+<br>
+<select name="goalSelector" id="goalSelector" class=spacedout style="width:240px;">
+	<option value="NN">No goal</option>
+
+	<option value="UV">Value should be increasing</option>
+	<option value="DV">Value should be decreasing</option>
+
+	<option value="SP">Value should be stable within a %</option>
+
+	<option value="AV">Value should be above a certain value</option>
+	<option value="BV">Value should be below a certain value</option>
+
+	<option value="AP">Value should increase by % every week</option>
+	<option value="BP">Value should decrease by % every week</option>
+
+	<option value="NA">Do not show arrow</option>
+</select><br>
+<div id=goalvalue>
+<label for="goal" class=normaltext id=goallabel>Goal Value</label><br>
+
+<input name="goal" id="goal" style="width:60px;" class=spacedout><br>
+</div>
+<label for="label" class=normaltext style="margin-top:10px;">Arrow Threshold</label><br>
+<input type="text" name="severityThreshold" id="severityThreshold" value="" style="width:24px;" class=spacedout> %
+<div style="float:right"><input name="severityThreshold_all" id="severityThreshold_all" type=checkbox> <label for="severityThreshold_all" class=normaltext>all</label></div>
+
+<br>
+
+<input type="hidden" name="collectionCounterID" id="collectionCounterID" value="">
+</form>
+</div>
+
+
+
+
+
+<form method=post action=EditCollection>
+<input type=hidden name=referer value="{{=request.env.http_referer}}">
+<input type=hidden name=collectionID value="{{=collectionID}}">
+<div class=formfieldname>Name</div>
+<input type=text name=name value="{{=name}}">
+<div class="header">Basic settings</div>
+<div class=formfieldname>Group</div>
+	<select name=groupID style="width:300px;">
+	<option value=0>Select Group...</option>
+	{{for group in groups:
+		s = ""
+		if group[0] == groupID: s = " Selected"}}
+		<option value="{{=group[0]}}"{{=s}}>{{=group[1]}}</option>
+	{{pass}}
+	</select>
+<div class=formfieldname>Default View</div>
+	<select name=defaultView style="width:300px;">
+	{{options = [("graphs", "Graphs"), ("dashboard", "Dashboard")]
+	for o in options:
+	    s = ""
+		if o[0] == defaultView: s = " Selected"}}
+		<option value="{{=o[0]}}"{{=s}}>{{=o[1]}}</option>
+	{{pass}}
+	</select>
+<div class=formfieldname>Description (optional)</div>
+<textarea id=description name=description style="width:500px; height:90px;">{{=description or ""}}</textarea>
+<div class=formfieldname>Collection Type</div>
+	<select name="collectionType" id="collectionType" style="width:300px;" OnChange="OnCollectionTypeChanged();">
+	{{options = [("static", "Static (Normal)"), ("dynamic", "Dynamic")]
+	for o in options:
+	    s = ""
+		if o[0] == collectionType: s = " Selected"}}
+		<option value="{{=o[0]}}"{{=s}}>{{=o[1]}}</option>
+	{{pass}}
+	</select>
+
+<div id=dynamicdiv>
+<div class="header">Dynamic settings</div>
+<div class=formfieldname>Dynamic counterID</div>
+<input type=text name=dynamicCounterID value="{{=dynamicCounterID or 0}}">
+<div class=formfieldname>Dynamic subjectID</div>
+<input type=text name=dynamicSubjectID value="{{=dynamicSubjectID or 0}}">
+<div class=formfieldname>Dynamic Aggregate Function</div>
+	<select name=dynamicAggregateFunction style="width:300px;">
+	{{options = [("SUM", "SUM"), ("COUNT", "COUNT")]
+	for o in options:
+	    s = ""
+		if o[0] == dynamicAggregateFunction: s = " Selected"}}
+		<option value="{{=o[0]}}"{{=s}}>{{=o[1]}}</option>
+	{{pass}}
+	</select>
+<div class=formfieldname>Dynamic Number Of Rows</div>
+<input type=text name=dynamicCount value="{{=dynamicCount or 10}}">
+</div>
+<div id=staticdiv>
+{{if collectionID:}}
+<div class=header>Collection Counters</div>
+<table id=ordertable class="zebra datatable">
+<tr class="nodrop nodrag">
+<th>&nbsp;</th><th>Table Name</th><th>Subject</th><th>Key</th><th>Label</th><th>Aggregate</th><th>Goal</th><th>Threshold</th><th>&nbsp;</th>
+</tr>
+
+{{for counter in collectionCounters:
+	ccID = counter.collectionCounterID}}
+	<tr id="cc_{{=ccID}}" style="border-bottom:0px solid #779999;">
+	<td class=dragHandle style="background-image:url('{{=URL("static/images/gripblue2.png")}}'); background-repeat:no-repeat; background-position:center;"></td>
+	<td>{{=counter.counterGroupName}} / {{=counter.counterName}}</td>
+	<td>{{=counter.subjectText}}</td>
+	<td>{{=counter.keyText or ""}}</td>
+	<td id="disp_label_{{=ccID}}"></td>
+	<td id="disp_aggregateFunction_{{=ccID}}"></td>
+	<td id="disp_goal_{{=ccID}}"></td>
+	<td id="disp_severityThreshold_{{=ccID}}"></td>
+	<td style="text-align:right;"><nobr><span class=link OnClick="EditCollectionCounter({{=ccID}});">edit</span> &middot; <a href="RemoveFromCollection?collectionCounterID={{=ccID}}" OnClick="return confirm('Are you sure?');">remove</a></nobr>
+		<input type="hidden" class="label" name="label_{{=ccID}}" id="label_{{=ccID}}" value="{{=counter.label or ""}}">
+		<input type="hidden" class="aggregateFunction" name="aggregateFunction_{{=ccID}}" id="aggregateFunction_{{=ccID}}" value="{{=counter.aggregateFunction or "AVG"}}">
+		<input type="hidden" class="goal" name="goal_{{=ccID}}" id="goal_{{=ccID}}" value="{{=counter.goal or "0"}}">
+		<input type="hidden" class="goalType" name="goalType_{{=ccID}}" id="goalType_{{=ccID}}" value="{{=counter.goalType or "V"}}">
+		<input type="hidden" class="goalDirection" name="goalDirection_{{=ccID}}" id="goalDirection_{{=ccID}}" value="{{=counter.goalDirection or "U"}}">
+		<input type="hidden" class="severityThreshold" name="severityThreshold_{{=ccID}}" id="severityThreshold_{{=ccID}}" value="{{=counter.severityThreshold or 5}}">
+		<input type="hidden" name="subjectText_{{=ccID}}" id="subjectText_{{=ccID}}" value="{{=counter.subjectText or ""}}">
+		<input type="hidden" name="keyText_{{=ccID}}" id="keyText_{{=ccID}}" value="{{=counter.keyText or ""}}">
+	</td>
+	</tr>
+{{pass}}
+</table>
+</div>
+<div class="header">Dashboard settings</div>
+<div class=formfieldname>Number of columns</div>
+<select name=dashboardNumColumns style="width:90px;">
+{{for o in ["default", "1", "2", "3", "4", "5", "6", "7", "8"]:
+    s = ""
+    if o == config.get("dashboardNumColumns", None): s = " Selected"}}
+    <option value="{{=o}}"{{=s}}>{{=o.capitalize()}}</option>
+{{pass}}
+</select>
+<div class=formfieldname>Arrow Type</div>
+	<select name=dashboardArrow style="width:90px;">
+	{{options = ["default", "off", "arrow", "dot"]
+	for o in options:
+	    s = ""
+		if o == config.get("dashboardArrow", None): s = " Selected"}}
+		<option value="{{=o}}"{{=s}}>{{=o.capitalize()}}</option>
+	{{pass}}
+	</select>
+<div class=formfieldname>Show History</div>
+	<select name=dashboardHistory style="width:90px;">
+	{{options = ["default", "5", "7", "off"]
+	for o in options:
+	    s = ""
+		if o == config.get("dashboardHistory", None): s = " Selected"}}
+		<option value="{{=o}}"{{=s}}>{{=o.capitalize()}}</option>
+	{{pass}}
+	</select>
+<div class=formfieldname>Period starts at</div>
+	<select name=periodType style="width:90px;">
+	{{options = ["default", "rolling", "calendar"]
+	for o in options:
+	    s = ""
+		if o == config.get("periodType", None): s = " Selected"}}
+		<option value="{{=o}}"{{=s}}>{{=o.capitalize()}}</option>
+	{{pass}}
+	</select>
+
+<script>
+function OnCollectionTypeChanged() {
+	if ($("#collectionType option:selected").val() == "static") {
+		$("#staticdiv").show();
+		$("#dynamicdiv").hide();
+	} else {
+		$("#staticdiv").hide();
+		$("#dynamicdiv").show();
+	}
+}
+OnCollectionTypeChanged();
+</script>
+
+{{pass
+t = ""
+if collection:
+ t = ",".join([str(c.collectionCounterID) for c in (collection.counters or [])])
+pass}}
+
+
+<div id="unsaved" style="display:none;color:crimson;font-weight:bold;" class=normaltext>You have unsaved changes. Click <i>Save Collection</i> to save your changes!</div>
+<input type="hidden" id="collectionCounters" name="collectionCounters" value="{{=t}}">
+<div class=header>&nbsp;</div>
+<div style="padding-top:24px;padding-left:10px;"><input type=submit value="Save Collection" style="height:34px;width:160px;"></div>
+</form>
+{{if collectionID:}}
+<br><div class=normaltext>
+<a style="color:crimson;" href="DeleteCollection?collectionID={{=request.vars.collectionID}}" OnClick="return confirm('Are you sure you want to delete this collection?');">Delete this collection</a>
+&middot;
+<a href="CopyCollection?collectionID={{=request.vars.collectionID}}" OnClick="return confirm('Are you sure you want to copy this collection?');">Copy this collection</a>
+&middot;
+<a href="Counters?collectionID={{=request.vars.collectionID}}">View collection</a>
+&middot;
+<a href="Dashboard?collectionID={{=request.vars.collectionID}}">View dashboard</a>
+</div>
+{{pass}}
+
+<script>
+$(document).ready(function() {
+
+    $("#goalSelector").bind("change", function(e){
+        ShowHideGoalValue();
+    });
+
+	$("#ordertable").tableDnD({
+		dragHandle: ".dragHandle",
+	    onDragClass: "dragging",
+	    onDrop: function(table, row) {
+	    	Unsaved();
+            var rows = table.tBodies[0].rows;
+            ids = ""
+            for (var i=0; i<rows.length; i++) {
+            	var idd = rows[i].id;
+            	if (idd.indexOf("_") >= 0)
+	                ids += idd.split("_")[1]+",";
+            }
+            $("#collectionCounters").val(ids)
+	        $("#ordertable tr:even").addClass('alt');
+	        $("#ordertable tr:odd").removeClass('alt');
+	        //url = "OrderCollectionDragDrop?order=" + ids
+	        //$.getScript(url);
+	    },
+		onDragStart: function(table, row) {
+
+		}
+	});
+	UpdateListFromForm(true);
+});
+
+function Unsaved() {
+	$("#unsaved").show();
+}
+function ShowHideGoalValue()
+{
+	var goalSelector = $("#goalSelector").val();
+	var d = goalSelector[0];
+	var t = goalSelector[1];
+	label = "Value"
+	if (d == "A" || d == "B" || d == "S") {
+		$("#goalvalue").show();
+		if (d == "S")
+			label = "Stable percentage";
+		else if (t == "V")
+			label = "Absolute Value Threshold";
+		else if (d == "A")
+			label = "Increase percentage per week";
+		else if (d == "B")
+			label = "Decrease percentage per week";
+	} else {
+		$("#goalvalue").hide();
+	}
+
+	$("#goallabel").html(label);
+}
+
+function UpdateListFromForm()
+{
+	collectionCounterIDs = $("#collectionCounters").val().split(",")
+	for (i = 0; i < collectionCounterIDs.length; i++) {
+		var id = collectionCounterIDs[i];
+		UpdateListFieldFromFormField("severityThreshold_" + id);
+		UpdateListFieldFromFormField("label_" + id);
+		v = $("#aggregateFunction_" + id).val();
+		if (v == "MIN") v = "Minimum value"
+		else if (v == "MAX") v = "Maximum value"
+		else if (v == "LAST") v = "Last Value"
+		else if (v == "SUM") v = "Sum"
+		else if (v == "FIRST") v = "First Value"
+		else v = "Average";
+		UpdateListFieldFromFormField("aggregateFunction_" + id, val=v);
+
+		// goal
+		var goal = $("#goal_" + id).val();
+		var goalDirection = $("#goalDirection_" + id).val();
+		var goalType = $("#goalType_" + id).val();
+		var v = GetPrettyValueForGoal(goal, goalDirection, goalType);
+
+		UpdateListFieldFromFormField("goal_" + id, val=v);
+	}
+}
+
+function UpdateListFieldFromFormField(name, val)
+{
+	var v;
+	if (val != undefined)
+		v = val
+	else
+		v = $("#" + name).val();
+	var fld = $("#disp_" + name);
+	if (fld.html() != v && fld.html() != '') {
+		fld.addClass("changed");
+	}
+	if (v == "") v = "-"
+	fld.html(v);
+}
+
+$( "#dialog-form" ).dialog({
+	autoOpen: false,
+	height: 380,
+	width: 360,
+	modal: true,
+	open: function( event, ui ) {
+		collectionCounterID = $(this).data('collectionCounterID')
+		$("#collectionCounterID").val(collectionCounterID);
+		var aggregateFunction = $("#aggregateFunction_" + collectionCounterID).val();
+		var severityThreshold = $("#severityThreshold_" + collectionCounterID).val();
+		var goal 			  = $("#goal_" + collectionCounterID).val();
+		var label 			  = $("#label_" + collectionCounterID).val();
+		var goalType 		  = $("#goalType_" + collectionCounterID).val();
+		var goalDirection 	  = $("#goalDirection_" + collectionCounterID).val();
+
+		$("#aggregateFunction").val(aggregateFunction);
+		$("#severityThreshold").val(severityThreshold);
+		$("#goalSelector").val(goalDirection + goalType);
+		$("#goal").val(goal);
+		$("#label").val(label);
+		$("#label").parent().find("input:checkbox").removeAttr('checked');
+
+		ShowHideGoalValue();
+	},
+	buttons: {
+		"Submit": function() {
+			Unsaved();
+			var goal = $("#goal").val();
+			var goalSelector = $("#goalSelector").val();
+			var goalDirection = goalSelector[0];
+			var goalType = goalSelector[1];
+			var aggregateFunction = $("#aggregateFunction").val();
+			var severityThreshold = $("#severityThreshold").val();
+			var label = $("#label").val();
+
+			var goal_all = $("#goal_all").prop('checked');
+			var aggregateFunction_all = $("#aggregateFunction_all").prop('checked');
+			var severityThreshold_all = $("#severityThreshold_all").prop('checked');
+			var label_all = $("#label_all").prop('checked');
+
+			collectionCounterID = $("#collectionCounterID").val();
+			$("#aggregateFunction_" + collectionCounterID).val(aggregateFunction);
+			$("#severityThreshold_" + collectionCounterID).val(severityThreshold);
+			$("#goal_" + collectionCounterID).val(goal);
+			$("#goalType_" + collectionCounterID).val(goalType);
+			$("#goalDirection_" + collectionCounterID).val(goalDirection);
+			$("#label_" + collectionCounterID).val(label);
+				$(".label").each(function(index) {
+					var id = $(this).attr("id").split("_")[1];
+					if (id == collectionCounterID || label_all) {
+						var subjectText = $("#subjectText_"+id).val();
+						var keyText = $("#keyText_"+id).val();
+						var thisLabel = label.replace(/\(subject\)/gi, subjectText);
+						var thisLabel = thisLabel.replace(/\(key\)/gi, keyText);
+						$(this).val(thisLabel);
+					}
+
+				});
+			if (goal_all) {
+				$(".goal").val(goal);
+				$(".goalType").val(goalType);
+				$(".goalDirection").val(goalDirection);
+			}
+			if (severityThreshold_all) {
+				$(".severityThreshold").val(severityThreshold)
+			}
+			if (aggregateFunction_all) {
+				$(".aggregateFunction").val(aggregateFunction)
+			}
+			UpdateListFromForm();
+			$(this).dialog("close");
+	},
+	Cancel: function() {
+		$(this).dialog("close");
+	}},
+	close: function() {
+		//allFields.val("").removeClass("ui-state-error");
+	}});
+
+</script>

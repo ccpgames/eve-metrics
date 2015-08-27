@@ -1,0 +1,10 @@
+{{extend 'layout.html'}}
+<h3>View lookup tables</h3>
+
+<ul>
+{{for tID, t in tables.iteritems():}}
+<li><a href="ViewLookupTable?lookupTableID={{=tID}}">{{=t.lookupTableName}}</a></li>
+{{pass}}
+</ul>
+
+<br><a href="EditLookupTable?lookupTableID=0">Add Lookup Table</a>

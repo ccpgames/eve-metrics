@@ -1,0 +1,146 @@
+{{extend 'servicemonitor/baselayout.html'}}
+{{
+    pointWidth = int(700/(len(rows) or 1))
+    prevDay = (dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    nextDay = (dt + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    now = datetime.datetime.now()
+}}
+{{block fullView}}
+<script>
+function updateQueryStringParameter(uri, key, value) {
+  var re = new RegExp("([?&])" + key + "=.*?(&|$)", "i");
+  var separator = uri.indexOf('?') !== -1 ? "&" : "?";
+  if (uri.match(re)) {
+    return uri.replace(re, '$1' + key + "=" + value + '$2');
+  }
+  else {
+    return uri + separator + key + "=" + value;
+  }
+}
+function Goto(url)
+{
+  window.parent.location.href = url;
+    window.location.href = url;
+}
+
+function SelectReport() {
+    var report = $("#report").val();
+    var newUrl = updateQueryStringParameter(window.location.href, "report", report);
+    Goto(newUrl);
+}
+function GotoDay(d) {
+    var newUrl = updateQueryStringParameter(window.location.href, "dt", d);
+    Goto(newUrl);
+}
+function SetMinMax() {
+    var min = prompt("Set min HH:MM", '{{=(request.vars.min or "")}}');
+    var max = prompt("Set max HH:MM", '{{=(request.vars.max or "")}}');
+    var newUrl = updateQueryStringParameter(window.location.href, "min", min);
+    newUrl = updateQueryStringParameter(newUrl, "max", max);
+    Goto(newUrl);
+}
+</script>
+<br>
+<div style="margin:auto;width:99%;text-align:right;">
+
+<select name="report" id="report" OnChange="SelectReport();">
+    {{for k, v in reports.iteritems():}}
+        <option value="{{=k}}"{{if report == k: response.write(" Selected")}}>{{=v}}</option>
+    {{pass}}
+</select>
+<br>
+<a href="javascript:GotoDay('{{=prevDay}}');"><< prev</a> &middot; <a href="javascript:GotoDay('{{=nextDay}}');">next >></a>
+</div>
+{{if not rows:}}
+<div class=error>{{response.write("No data found for %s on %s" % (report, dtString))}}</div>
+{{else:}}
+<div id="chart" style="height:800px;width:99%;margin-left:auto;margin-right:auto;position:relative;"></div>
+<div style="margin:auto;width:99%;text-align:right;position:absolute;">
+    <a href="javascript:SetMinMax();">set min/max</a>
+</div>
+{{pass}}
+<script>
+$(function () {    
+    $('#chart').highcharts({
+
+        chart: {
+            type: 'columnrange',
+            inverted: true
+        },
+
+        title: {
+            text: 'Task Report for {{=dt.strftime("%Y-%m-%d")}}'
+        },
+        credits: {
+              enabled: false
+          },
+        xAxis: {
+            categories: [
+            {{for r in rows: response.write(XML("'%s', " % r.taskName.replace(" :: ", " ::<br>")))}}
+            ],
+            gridLineColor: '#F5F5F5',
+            gridLineWidth: 1,
+
+        },
+
+        yAxis: {
+            type: 'datetime',
+            title: {
+                text: ''
+            },
+            {{if request.vars.min:
+                h, m = tuple(request.vars.min.split(":"))}}
+                min: Date.UTC({{=dt.year}}, {{=dt.month-1}}, {{=dt.day}}, {{=h}}, {{=m}}, 0),
+            {{pass}}
+            {{if request.vars.max:
+                h, m = tuple(request.vars.max.split(":"))}}
+                max: Date.UTC({{=dt.year}}, {{=dt.month-1}}, {{=dt.day}}, {{=h}}, {{=m}}, 0),
+            {{pass}}
+        },
+            plotOptions: {
+                columnrange: {
+                    grouping: false
+                }
+            },
+
+        legend: {
+            enabled: false
+        },
+        tooltip:{
+            formatter: function() {
+                    return '<b>'+ this.x +'</b><br/>'+
+                        Highcharts.dateFormat('%e %B %H:%M:%S',this.point.low)+
+                        ' - ' + Highcharts.dateFormat('%e %B %H:%M:%S',this.point.high)+' ('+ Highcharts.dateFormat('%H:%M:%S',(this.point.high-this.point.low)) + ')<br/>';
+                }
+        },
+
+        series: [{
+            name: 'Run Time',
+            pointWidth:{{=pointWidth}},
+            borderWidth:0,
+            data:[
+            {{for i, r in enumerate(rows):
+                s = r.startTime
+                if not r.endTime and (now-r.startTime).days < 0: continue
+                e = r.endTime or now
+                startTimeTxt = "%s, %s, %s, %s, %s, %s" % (s.year, s.month-1, s.day, s.hour, s.minute, s.second)
+                endTimeTxt = "%s, %s, %s, %s, %s, %s" % (e.year, e.month-1, e.day, e.hour, e.minute, e.second)
+                col = ("'%s'" % r.color) if r.color else "null"
+                if not r.endTime: col = "'#990000'"
+            }}
+                {
+                    x: {{=i}},
+                    low: Date.UTC({{=startTimeTxt}}),
+                    high: Date.UTC({{=endTimeTxt}}),
+                    color: {{=XML(col)}},
+                },
+            {{pass}}
+          ]
+        },
+                ]
+
+    });
+
+});
+</script>
+{{pass}}

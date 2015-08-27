@@ -1,0 +1,140 @@
+<h4>
+  {{if chartLabel:}}
+  <span style="font-weight:bold; padding-left:10px;">{{=chartLabel}}</span>
+  {{else:}}
+  <a class=tt href="Reports?groupID={{=groupID}}">{{=groupName}}</a> /
+  <a class=tt href="Report?counterID={{=counterID}}" title="{{=FmtText(counterDescription)}}">{{=counterName}}</a>
+{{if chartName:}}
+  : {{=XML(chartName)}}
+{{pass}}
+{{pass
+if len(charts) > 0:
+  g = "%s_%s_%s" % (chart["counterID"], chart["subjectID"], chart["keyID"])
+  }}
+<div style="float:right; vertical-align:bottom;">
+  <img id="gear_{{=chartNumber}}:{{=g}}" src="{{=URL("static/images/gear.png")}}" title="Options for this chart" class=gear style="margin-top:8px;">
+</div>
+{{pass}}
+</h4>
+
+{{
+width = graphWidth
+height = graphHeight
+
+chartHeight = "85"
+if height < 400: chartHeight = "80"
+
+goal = request.vars.goal
+}}
+<script>
+google.load('visualization', '1.1', {packages: ['corechart']});
+
+function drawVisualization() {
+  chartData = [
+{{
+    keys = dataForDates.keys()
+    keys.sort()
+    txt = ""
+    for k in keys:
+      lst = str(k).split(" ")[0].split("-")
+      values = dataForDates[k]
+      v = values[idx]
+      marker = values[0]
+      txt += "    [%s,%s,%s,'%s','%s', %s],\n" % (lst[0], lst[1], lst[2], marker[0], marker[1], v)
+    pass
+    txt = txt[:-2]
+    response.write(XML(txt))
+
+vAxisTitle = chart["config"].get("title", "")
+vAxisTitleSize = 11 if vAxisTitle else 12
+}}
+  ];
+  var data = new google.visualization.DataTable();
+  data.addColumn('date', 'Date');           // 1. Date
+
+{{
+
+  n = chart["groupName"] + " / " + chart["counterName"] + " : " + chart["chartName"]
+  n = re.sub('<[^<]+?>', '', n)
+  response.write(XML("  data.addColumn('number', '%s');\n" % CutAt(n, 140).replace("'", "\\'").replace("\r", "").replace("\n", "")))
+}}
+  data.addColumn({type:'string', role:'annotation'});     // 3. Annotation
+  data.addColumn({type:'string', role:'annotationText'}); // 4. Annotation
+  {{if goal:}}
+    data.addColumn('number', 'Goal'); // 5. Goal
+  {{pass}}
+  data.addColumn('number', 'Time Series')
+
+  data.addRows(chartData.length);
+  for (i = 0; i < chartData.length; i++) {
+    var d = chartData[i];
+    var dt = new Date(d[0], d[1]-1, d[2]);
+
+    data.setValue(i, 0, dt);              // 1. Date
+
+    data.setValue(i, 1, d[5]);            // 2. First chart
+    data.setValue(i, 2, d[3]);            // 3. Annotation
+    data.setValue(i, 3, d[4]);            // 4. Annotation
+    {{if goal:}}
+      data.setValue(i, 4, {{=goal}});            // 5. Goal
+    {{pass}}
+  }
+  
+    // Create and draw the visualization.
+    var ac = new google.visualization.{{=chartType}}(document.getElementById('visualization_{{=controlID}}'));
+    ac.draw(data, {
+      isStacked: false,
+      width: '{{=width}}',
+      height: {{=height}},
+      legend: {position: 'right'},
+      tooltip: {showColorCode: true, textStyle: {fontSize: 12}},
+      focusTarget: 'category',
+      chartArea:{left:60,top:15,width:"98%",height:"{{=chartHeight}}%"},
+      backgroundColor: { fill:'transparent' },
+      series: {1: {areaOpacity: 0.0}},
+
+      vAxis: {
+        {{if not zoom:}}
+        viewWindow: {min: 0},
+        {{pass}}
+        title: "{{=vAxisTitle}}", textStyle: {fontSize:'{{=vAxisTitleSize}}'}
+      {{
+        minValue = chart["config"].get("minValue", -1)
+        maxValue = chart["config"].get("maxValue", -1)
+        if minValue >= 0 and maxValue >= 0:}}
+                ,viewWindowMode:'explicit',
+                viewWindow:{ min:{{=minValue}}, max:{{=maxValue}}}
+      {{pass}}
+    },
+      hAxis: {title: "", textStyle: {fontSize:'12'}},
+      pointSize: {{=chart["config"].get("pointSize", 0)}},
+      lineWidth: {{=chart["config"].get("lineWidth", 2)}}
+      //vAxis: {title: "Year"}
+      {{
+        chartColor = chart["config"].get("color", None)
+        if chartColor:}}
+        ,colors: ['#{{=chartColor}}', '#CC7777']
+      {{pass}}
+    });
+  
+        google.visualization.events.addListener(ac, 'select', function() {
+          // grab a few details before redirecting
+          var selection = ac.getSelection();
+          var row = selection[0].row;
+          var col = selection[0].column;
+          var dt = data.getValue(row, 0);
+          var curr_date = dt.getDate();
+          var curr_month = dt.getMonth() + 1; //months are zero based
+          var curr_year = dt.getFullYear();
+          dt = curr_year + "-" + curr_month + "-" + curr_date;
+          src = "Report?counterID={{=counterID}}&dt="+dt;
+          $("#gotoreport").attr("href", src);
+          $("#annotationdate").val(dt)
+          $("#chartinteract").show();
+        });
+  }
+  google.setOnLoadCallback(drawVisualization);
+
+</script>
+
+<div id="visualization_{{=controlID}}" style="width: {{=width}}; height: {{=height}}px;"></div>

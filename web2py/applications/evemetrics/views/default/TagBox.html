@@ -1,0 +1,169 @@
+{{if (request.vars.collectionID or request.vars.counterID) and "description" in globals():
+	descDisplay = description
+	if not descDisplay: descDisplay = "<font color=gray>This %s has no description yet</font>" % ["collection", "report"][not not request.vars.counterID]}}
+
+	<div id="descdialog" title="Edit Description" style="display:block; overflow:hidden;">
+		<form name=editdescform id=editdescform method=post action="EditDescription" target=worker>
+			<input type=hidden name=counterID id=counterID value="{{=request.vars.counterID or ""}}">
+			<input type=hidden name=collectionID id=collectionID value="{{=request.vars.collectionID or ""}}">
+			<textarea id=descedit cols=103 rows=11 name=descedit class="input message">{{if "description" in globals(): response.write(XML(description))}}</textarea>
+		</form>
+	</div>
+
+	<div class=descbox>
+	<div id=desc>
+	{{=XML(FmtText2(descDisplay))}}
+	</div>
+	<div class=descboxedit OnClick="EditDescription();">Edit&nbsp;</div>
+	</div>
+{{pass}}
+
+<style>
+.tagbox {
+	padding-top:5px;
+	text-align:right;
+	float:right;
+}
+</style>
+{{if "contentType" in globals():}}
+<div style="float:left;" class=normaltext><a href="AccessRules?contentType={{=contentType}}&contentID={{=contentID}}"><img src="{{=URL("static/images/lock.png")}}" style="vertical-align:sub"> Restrict Page Access</a></div>
+{{pass}}
+<div id=tagbox class=tagbox>
+<div style="color:gray;">Tags</div>
+{{
+	inittags = ""
+	for tagID, tag in tags.iteritems():
+		inittags += "%s," % tag.tagName
+	pass
+}}
+<input type=text id="tagbox-text" value="{{=inittags}}" style="width:60px;">
+</div>
+
+<script>
+function EditDescription() {
+	$("#descdialog").dialog('open')
+}
+$("#descdialog").dialog({
+	autoOpen: false,
+	height:320,
+	width:480,
+	modal: false,
+	resizable: true,
+	minWidth: 550,
+	minHeight: 340,
+	buttons: {
+		'Submit': function() {
+			desc = $("#descedit").val(),
+			counterID = $("#counterID").val(),
+			collectionID = $("#collectionID").val();
+			$('#editdescform').submit();
+			$(this).dialog('close');
+		},
+		Cancel: function() {
+			if (confirm('Are you sure you want to cancel?'))
+				$(this).dialog('close');
+		}
+	},
+	open: function(event, ui) {
+		$("#descedit").height($("#descdialog").height()-20);
+		$("#descedit").width($("#descdialog").width());
+
+	},
+	resize: function(event, ui) {
+		$("#descedit").height($("#descdialog").height()-20);
+		$("#descedit").width($("#descdialog").width());
+	},
+	resizeStop: function(event, ui) {
+		//alert($.cookie("dialogoptions"))
+		opt = [$("#descdialog").width(), $("#descdialog").height()]
+		$.cookie("dialogoptions", opt, { expires: 365 });
+	},
+	dragStop: function(event, ui) {
+
+	}
+});
+
+var v = document.getElementById("descedit");
+
+if (v != null) {
+	AddFormattingToolbar(v);
+}
+
+var TagAdded = function(tag)
+{
+	{{if not session.userName:}}
+	var h = document.location.href.split("/");
+	alert('You need to log in to add to add a tag');
+	Goto("/Login?redirect=" +h[h.length-1])
+	return
+	{{pass}}
+
+	var linkType = {{=tagLinkType}};
+	var linkID = {{=tagLinkID}};
+	url = "AddTag?linkType=" + linkType + "&linkID=" + linkID + "&tag=" + tag;
+    $.getScript(url);
+} 
+
+
+var TagRemoved = function(tag)
+{  
+	{{if not session.userName:}}
+	var h = document.location.href.split("/");
+	alert('You need to log in to remove a tag');
+	Goto("/Login?redirect=" +h[h.length-1])
+	return
+	{{pass}}
+
+	var linkType = {{=tagLinkType}};
+	var linkID = {{=tagLinkID}};
+	url = "RemoveTag?linkType=" + linkType + "&linkID=" + linkID + "&tag=" + tag;
+    $.getScript(url);
+} 
+
+$(document).ready(function() { 
+	$("#tagbox-text").tagBox({afterTagAdd: TagAdded, afterTagRemove: TagRemoved, confirmRemoval: true});
+	} 
+
+); 
+
+
+function ToggleStar()
+{
+	{{if not session.userName:}}
+	var h = document.location.href.split("/");
+	alert('You need to log in to be a star');
+	Goto("/Login?redirect=" +h[h.length-1])
+	return
+	{{pass}}
+
+	url = "AddStar"
+	y = "y"
+	if ($("#starimg").attr("src").indexOf("_y") >= 0) {
+		url = "RemoveStar"
+		y = "n"
+	}
+    $("#starimg").attr("src", "/static/images/watched_"+y+".gif")
+
+	var linkType = {{=tagLinkType}};
+	var linkID = {{=tagLinkID}};
+	url = "" + url +"?linkType=" + linkType + "&linkID=" + linkID;
+    $.getScript(url);
+} 
+
+function RemoveStar()
+{
+	{{if not session.userName:}}
+	var h = document.location.href.split("/");
+	alert('You need to log in to remove be a star');
+	Goto("/Login?redirect=" +h[h.length-1])
+	return
+	{{pass}}
+
+	var linkType = {{=tagLinkType}};
+	var linkID = {{=tagLinkID}};
+	url = "/RemoveStar?linkType=" + linkType + "&linkID=" + linkID;
+    $.getScript(url);
+    $("#starimg").attr("src", "static/images/watched_n.gif")
+} 
+
+</script>

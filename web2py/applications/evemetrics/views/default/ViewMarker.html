@@ -1,0 +1,64 @@
+{{extend 'layout.html'}}
+<style>
+.created {
+	font-size:10px;
+	text-align:right;
+	padding-top:5px;
+}
+.box {
+ 	background-color:#F9F9F9;
+ 	border:1px solid #EEEEEE;
+ 	padding:5px;
+ 	margin-top:5px;
+}
+.key {
+	
+}
+.val {
+	font-weight:bold;
+}
+</style>
+<div style="text-align:right;"><a href="Markers?typeID={{=marker.typeID}}">back</a></div>
+<h3>{{=WriteStar(starred)}}{{=FmtDate(marker.dateTime)}}: {{=marker.title}}</h3>
+<h5>{{=marker.TYPE_TITLE}} - {{=marker.CATEGORY_TITLE}}
+{{if marker.important:}}
+ <img src="{{=URL("static/images/flag_green.png")}}" style="vertical-align:middle" title="Important event">
+{{pass}}
+</h5>
+{{if marker.url:}}
+<a href="{{=marker.url}}">{{=marker.url}}</a><br>
+{{pass}}
+<br>
+<div id=description class=box>
+{{=XML((marker.description or "").replace("\r", "<br>"))}}&nbsp;
+</div>
+{{if customFields:}}
+<div class=box>
+<table>
+{{if marker.includeTime:}}
+<tr><td class=key>Time</td><td class=val>{{=marker.dateTime.strftime("%H:%M")}}</td></tr>
+{{pass}}
+{{for fld in customFields:
+	v = fld.value
+	if fld.type == 2:
+	    v = "No"
+	    if v == "1": v = "Yes"
+	pass}}
+<tr><td class=key>{{=fld.title}}</td><td class=val>{{=v}}</td></tr>
+{{pass}}
+</table>
+</div>
+{{pass}}
+<div class=created>Created by {{=marker.userNameCreated}} on {{=marker.dateTimeCreated}}
+{{if marker.dateTimeEdited > marker.dateTimeCreated:}}
+<br>Last Edited by {{=marker.userNameEdited}} on {{=marker.dateTimeEdited}}
+{{pass}}</div>
+<br>
+<a href="AddMarker?markerID={{=marker.markerID}}" class=button><img src="static/images/edit.png" class=middleimg> Edit Event</a> &middot; 
+<a href="DeleteMarker?markerID={{=marker.markerID}}&typeID={{=marker.typeID}}" OnClick="return confirm('Are you sure you want to delete this event?');" class=button><img src="static/images/delete2.png" class=middleimg> Delete Event</a>
+
+{{
+	tagLinkID = marker.markerID
+	tagLinkType = TAG_MARKER
+}}
+{{include 'default/TagBox.html'}}

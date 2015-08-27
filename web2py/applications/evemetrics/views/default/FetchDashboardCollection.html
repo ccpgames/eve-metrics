@@ -1,0 +1,173 @@
+{{
+    def DayName(dt):
+        days = ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+        wd = datetime.datetime.strptime(dt, "%Y-%m-%d").weekday()
+        return days[wd]
+    pass
+    showHistory = None
+    dh = collection.config.get("dashboardHistory", 5)
+    if dh != "off":
+      try:
+        showHistory = int(dh)
+      except:
+        showHistory = 5
+      pass
+    pass
+    reverse = int(request.vars.reverse or 0)
+    ignoreZeros = int(request.vars.ignoreZeros or 0)
+    justDot = int(request.vars.justDot or 0)
+    showArrow = True
+    if collection.config.get("dashboardArrow", None) == "dot": justDot = 1
+    if collection.config.get("dashboardArrow", None) == "off": showArrow = False
+    dMap = {0.0: "%.2f", 10.0: "%.1f", 100.0: "%.0f"}
+    c = 0
+    data = {}
+
+    try:
+      firstRow = rows[0]
+    except:
+       firstRow = None
+    pass}}
+    {{if collection:
+        if not request.vars.hidetitle:
+            if collection.dynamicCounterID:
+              titleLink = "Report?counterID=%s" % collection.dynamicCounterID
+            else:
+              titleLink = "Counters?collectionID=%s" % collection.collectionID
+            pass}}
+        <h4 style="text-align:left;">{{=collection.groupName}} / <a href="{{=titleLink}}" style="font-weight:bold;">{{=collection.collectionName}}</a>
+        {{if not request.vars.embedded:}}
+            <span class=normaltext><font color="#BBBBBB">(<a href="EditCollection?collectionID={{=collection.collectionID}}"><font color="#BBBBBB">edit</font></a>)</font></span>
+        {{pass}}
+        </h4>
+        {{pass
+    else:}}
+    <h4>Collection {{=request.vars.collectionID}} not found</h4>
+    {{pass
+    colOrder = [8,7,6,5,4,3,2,1]
+    #colOrder = colOrder[-numColumns:]
+    if reverse: colOrder.reverse()
+    }}
+    <table width="100%" class=""><tr><th style="border-bottom:1px solid #999999;">&nbsp;</th>
+    {{try:
+        for cc in colOrder[-numColumns:]:
+            cls = "hd"
+            if cc == 1: cls = "hd lastweek"
+            dt = ""
+            if firstRow: dt = getattr(firstRow, "date%s" % cc)
+            if int(request.vars.dayName or 0):
+                dt = "%s<br><span class=smalltext><nobr>%s</nobr></span>" % (DayName(dt), dt)
+            pass}}
+            <th class="{{=cls}}">{{=XML(dt)}}</th>
+        {{pass
+        if showHistory:}}
+        <th class=hd>History</th>
+        {{pass}}
+    {{except:
+    raise
+    pass}}
+    </tr>
+    {{for i, r in enumerate(rows):
+        compareCol = 2
+        mv = ""
+        if ignoreZeros and not r.value1:
+            for cc in [2,3,4,5,6,7,8]:
+                v = getattr(r, "value%s" % cc)
+                if v and not r.value1:
+                    r.value1 = v
+                    compareCol = cc+1
+                pass
+            pass
+            mv = XML(" &nbsp;<font color=\"#BBBBCB\">%s</font> " % ("<" if reverse else ">"))
+        pass
+        subjectAndKey = ""
+        if r.subjectText: subjectAndKey = r.subjectText
+        if r.subjectText and r.keyText: subjectAndKey += " - "
+        if r.keyText: subjectAndKey += r.keyText
+        if subjectAndKey: subjectAndKey = " - " + subjectAndKey
+        cl = ""
+        if i % 2 == 1: cl = " class=alt"
+        tooltip = """
+        <ul>
+            <li>Aggregate: %s</li>
+            <li>Goal: %s</li>
+            <li>Severity Threshold: %s %%</li>
+            <li>Absolute: %s</li>
+        </ul>""" % (GetPrettyDashboardAggregateFunction(r.aggregateFunction or "AVG"), GetPrettyValueForGoal(r.goal, r.goalDirection, r.goalType), r.severityThreshold or "5.0", "YES" if r.absoluteValue else "no")
+        realLabel = "<span class=\"reallabel\"><a href=\"%s\">%s</a> / <a href=\"%s\">%s</a>%s</span>" % (URL("Reports?groupID=%d" % r.groupID), r.groupName, URL("Report?counterID=%d" % r.counterID), r.counterName, subjectAndKey)
+        label = ""
+        if not request.vars.embedded:
+            label = "<img src=\"%s\" style=\"padding-right:4px;\" class=""link detailslink"" OnClick=\"ToggleDetails(this);\">" % URL("static/images/asc.png")
+        pass
+        label += (r.label or realLabel)
+        if r.label:
+            label = "<nobr><span id=\"label\" class=label>%s</span></nobr>" % (label)
+        pass
+    }}
+    <tr{{=cl}}>
+        <td>{{=XML(label)}}
+        </td>
+        {{for cc in colOrder[-numColumns:]:
+            if cc == 1:
+                mvv = mv
+                mvrev = ""
+                if reverse:
+                    mvv = ""
+                    mvrev = mv
+                pass}}
+                <td class="val lastweek"><table class=dummy style="margin:0px;padding:0px;width:100%"><tr><td>
+                    {{if showArrow:}}
+                    <nobr>{{=GetDashboardArrow(r, reverse=reverse, compareCol=compareCol, justDot=justDot, numDays=numDays)}}{{=mvv}}</nobr>
+                    {{pass}}
+                </td><td style="text-align:right;"><nobr>{{=FmtAmt(r.value1, dMap)}}{{=mvrev}}</nobr></td></tr></table></td>
+            {{else:}}
+                <td class="val">{{
+                v = getattr(r, "value%s" % cc)
+                if v or not ignoreZeros:
+                    response.write(FmtAmt(v, dMap))
+                else:
+                    response.write(mv)
+                pass}}</td>
+            {{pass}}
+        {{pass
+        g = ""
+        if r.goalDirection in ("A", "B"): g = "&goal=%s" % r.goal}}
+        {{if showHistory:}}
+        <td class="link trend" id="trend_{{=collection.collectionID}}_{{=c}}" OnClick="Goto('Counters?graph={{=r.counterID}}_{{=(r.subjectID or 0)}}_{{=(r.keyID or 0)}}&numDays={{=numDaysForTrend}}{{=g}}');">
+        </td>
+        {{pass}}
+    </tr>
+    <tr style="display:none;" class=detailsrow><td class=details colspan=10>
+        {{=XML(realLabel)}}<br>
+            {{=XML(tooltip)}}
+    </td></tr>
+    {{
+    data[c] = []
+    for co in colOrder:
+        data[c].append(getattr(r, "value%s" % co))
+    pass
+    c += 1
+    pass
+
+    }}
+    </table>
+
+    <script>
+    {{if showHistory:
+        for i in xrange(c):
+            d = data[i]}}
+            vals = []
+            {{
+            import copy
+            colOrder2 = copy.copy(colOrder)
+            colOrder2 = colOrder2[:max(showHistory, numColumns)]
+            colOrder2.reverse()
+            for co in colOrder2:
+                if ignoreZeros and not d[co-1]: break
+                }}vals[vals.length] = {{=(d[co-1] or 0)}};
+            {{pass
+            if reverse: response.write("vals.reverse();")}}
+            DrawTrendLine("#trend_{{=collection.collectionID}}_{{=i}}", vals, {{=max(showHistory, numColumns)}});
+        {{pass
+    pass}}
+    </script>

@@ -1,0 +1,20 @@
+{{extend 'layout.html'}}
+
+<h3>Edit Marker Category</h3>
+<style>
+.formfieldname {
+	color:gray;
+	font-size:12px;
+	padding-top:5px;
+}
+</style>
+
+<form method=post action=EditMarkerCategory>
+<input type=hidden name=categoryID value="{{=categoryID}}">
+<input type=hidden name=typeID value="{{=typeID}}">
+<div class=formfieldname>Title</div>
+<input type=text name=title value="{{=title}}">
+<div class=formfieldname>Description (optional)</div>
+	<textarea id=description name=description style="width:500px; height:150px;">{{=description or ""}}</textarea>
+<div style="padding-top:16px;"><input type=submit value="Submit"></div>
+</form>

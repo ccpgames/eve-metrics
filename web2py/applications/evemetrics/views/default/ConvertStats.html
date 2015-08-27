@@ -1,0 +1,114 @@
+{{extend 'layout.html'}}
+
+
+ <script type="text/javascript">
+$(document).ready(function() {
+    $( "#convertDate" ).datepicker({
+        dateFormat: "yy-mm-dd",        
+        showOtherMonths: true,
+        selectOtherMonths: true,
+        changeMonth: true,
+        changeYear: true,        
+    });
+
+    
+});
+
+</script>
+
+
+{{if convertDate is None:}}
+<h3>Enter a conversion date</h3>
+{{else:}}
+<h3>Statistics for {{=convertDate}}</h3>
+{{pass}}
+<input name="convertDate" id="convertDate" value="{{=convertDate or ""}}" />
+<form method="post">
+<br><input type="submit" value=Go onclick="doFunction();">
+</form>
+<script type="text/javascript">
+function doFunction()
+{
+    convertDate = $("#convertDate").datepicker('getDate');
+};
+
+</script>
+
+
+{{for key, value in dayOneStatsByType:}}
+<div id="stat_{{=key}}" style="min-width: 1000px; height: 400px; margin: 0 auto">{{=key}}</div>
+{{pass}}
+
+<script type="text/javascript">
+function MakeChart(divID, values)
+{
+    console.log(divID)
+    console.log(values)
+    console.log("---------------")
+    x_axis_categories = [];   
+    for(i = 0; i < values.length; i++)
+    {
+        x_axis_categories.push("Day " +(-1 * i).toString());
+    }
+        
+    $('#stat_' + divID).highcharts({
+        chart: {
+            type: 'column'
+        },
+        title: {
+            text: divID
+        },        
+        xAxis: {
+            categories: x_axis_categories
+        },
+        yAxis: {
+            min: 0,
+            //max: ,
+            title: {
+                text: "median"
+            }
+        },
+        tooltip: {
+            shared: true
+            /*headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+            pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+                '<td style="padding:0"><b>{point.y:.1f}</b></td></tr>',
+            footerFormat: '</table>',
+            shared: true,
+            useHTML: true*/
+        },
+        plotOptions: {
+            column: {
+                pointPadding: 0.2,
+                borderWidth: 0
+            }
+        },
+        series: [{
+            name: divID,
+            data: values
+
+        }]
+    });
+};
+
+
+/*{{for key in statsByType.keys():}}
+    var divID = "{{=key}}";        
+    var values_list = {{=XML(statsByType[key])}};        
+    MakeChart(divID, values_list);
+{{pass}}*/
+
+{{for key in medianStatsByType.keys():}}
+    var divID = "{{=key}}";        
+    var values_list = {{=XML(medianStatsByType[key])}};        
+    MakeChart(divID, values_list);
+{{pass}}
+
+/*var t = {{=XML(jstatsByType["statsByType"])}};
+for(val in t)
+{
+    console.log(val)
+    console.log(t[val])
+}*/
+    
+</script>

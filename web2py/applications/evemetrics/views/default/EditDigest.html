@@ -1,0 +1,314 @@
+{{extend 'layout.html'}}
+{{dig = ""
+if digestID > 0:
+    dig = "<a href=\"ViewDigest?digestID=%s\">%s</a> > Edit Digest" % (digestID, digestName)
+else:
+    dig = "Add Digest"
+pass}}
+<h3><a href="Digests">Digests</a> > {{=XML(dig)}}</h3>
+
+<style>
+input[type="checkbox"] {
+     vertical-align: middle;
+}
+input[type="text"], textarea {
+     width:490px !important;
+}
+.header {
+    padding-top:10px;
+    border-bottom:1px solid #CDCDCD;
+    width:500px;
+    margin-bottom:5px;
+    font-size:18px;
+}
+.digestSection {
+    border:1px solid #EEEEEE;
+    background-color:#EAEAEA;
+    width:493px;
+    padding:3px;
+    margin-bottom:10px;
+    font-size: 14px;
+    //background: -moz-linear-gradient(top, #CCCCCC, #FFFFFF);
+    //background: -ms-linear-gradient(top, #CCCCCC, #FFFFFF);
+    //background: -webkit-linear-gradient(top, #CCCCCC, #FFFFFF);
+    //background: -o-linear-gradient(top, #CCCCCC, #FFFFFF);
+    //background: linear-gradient(top, #CCCCCC, #FFFFFF);
+}
+.deleteButton {
+    padding:3px;
+}
+.deleteButton:hover {
+    border:1px solid #BBBBBB;
+    padding:2px;
+    border-radius:3.01px;
+    background-color:#CCCCCC;
+}
+.ordertable td {
+    border-bottom:5px solid white;
+}
+
+.dragging {
+    background-color:#AAAABC;
+}
+.scheduleDivs {
+    display:none;
+}
+
+.digestEmail {
+    font-size:12px;
+    margin:2px 0px 4px 0px;
+    background-color: #EEEEEE;
+    width:493px;
+    padding:2px 0px 2px 5px;
+}
+</style>
+
+<script>
+function AddSection()
+{
+    for (i = 0; i < {{=MAX_DIGEST_SECTIONS}}; i++) {
+        d = $("#sectiondiv_"+i);
+        if (!d.is(":visible")) {
+            d.show();
+            return;
+        }
+    }
+}
+function AddAlert()
+{
+    for (i = 0; i < {{=MAX_DIGEST_ALERTS}}; i++) {
+        d = $("#alertdiv_"+i);
+        if (!d.is(":visible")) {
+            d.show();
+            return;
+        }
+    }
+}
+function AddFromUrl(num)
+{
+    var v = prompt("Enter Eve Metrics URL to parse")
+    if (v == null)
+        return
+    request = "num="+num+"&url="+encodeURIComponent(v)
+    lastXhr = $.getJSON("EditDigestParseUrl", request, function(data, status, xhr) {
+        err = data["error"];
+        if (err != "") {
+            alert(err);
+            return
+        }
+        num = data["num"];
+        contentType = data["contentType"];
+        contentConfig = data["contentConfig"];
+        $("#sectionContentType_"+num).val(contentType);
+        $("#sectionContentConfig_"+num).val(contentConfig);
+    });
+
+}
+
+function AddRecipient(cc) {
+    var emails = prompt("Email Addresses to add (comma separated)");
+    if (!emails)
+        return;
+    Goto("EditDigestEmails?digestID={{=digestID}}"+"&cc="+cc+"&emails=" + encodeURIComponent(emails))
+}
+
+</script>
+{{
+def GetTemplateInfo(templateID):
+    template = templates.get(templateID, None)
+    if not template: return ""
+    return template.icon
+pass
+
+def WriteDigestSection(row):}}
+    <tr id="sectiondiv_{{=row.sectionID}}" class="digestSection">
+    <td style="background-image:url('{{=URL("static/images/gripblue2.png")}}'); background-repeat:no-repeat; background-position:center;"></td>
+    <td>
+    {{icon = GetTemplateInfo(row.templateID)
+    if icon: icon = "<img src=\"%s\" style=\"height:16px; vertical-align:middle;padding-right:2px;\">" % URL("static/images/templates/%s" % icon)
+    response.write(XML(icon))}}
+    <a href="EditDigestSection?sectionID={{=row.sectionID}}&digestID={{=row.digestID}}">{{=row.sectionTitle or "Unnamed"}}</a>
+        <div style="float:right;font-weight:normal;">
+            <a href="DeleteDigestSection?digestID={{=(row.digestID or 0)}}&sectionID={{=(row.sectionID or 0)}}" style="color:crimson;" OnClick="return confirm('Are you sure you want to delete this section?');"><img src="{{=URL("static/images/DeleteRed_sml.png")}}" title="Delete Section" class="deleteButton"></a>
+        </div>
+    </td>
+    </tr>
+{{pass}}
+
+{{def WriteDigestAlert(row):
+}}
+    <tr id="sectiondiv_{{=row.alertID}}" class="digestSection">
+    <td style="background-image:url('{{=URL("static/images/gripblue2.png")}}'); background-repeat:no-repeat; background-position:center;"></td>
+    <td>
+    {{icon = GetTemplateInfo(row.templateID)
+    if icon: icon = "<img src=\"%s\" style=\"height:16px; vertical-align:middle;padding-right:2px;\">" % URL("static/images/templates/%s" % icon)
+    response.write(XML(icon))}}
+    <a href="EditDigestAlert?alertID={{=row.alertID}}&digestID={{=row.digestID}}">{{=row.title or "Unnamed"}}</a>
+        <div style="float:right;font-weight:normal;">
+            <img src="{{=URL("static/images/trigger_%s.png" % row.method)}}" style="margin-bottom:3px;" title="Alert type: {{=row.method}}"> 
+            <a href="DeleteDigestAlert?alertID={{=(row.alertID or 0)}}" style="color:crimson;" OnClick="return confirm('Are you sure you want to delete this alert?');"><img src="{{=URL("static/images/DeleteRed_sml.png")}}" title="Delete Alert" class="deleteButton"></a>
+        </div>
+    </td>
+    </tr>
+{{pass}}
+
+<form method=post action=EditDigest>
+<input type=hidden name=referer value="{{=request.env.http_referer}}">
+<input type=hidden name=digestID id=digestID value="{{=digestID}}">
+<input type=hidden name=duplicate value="{{=duplicate}}">
+<div class=formfieldname>Name</div>
+<input type=text name=name value="{{=digestName}}">
+<div class=formfieldname>Description (optional)</div>
+<textarea id=description name=description style="width:500px; height:70px;">{{=description or ""}}</textarea>
+
+<div class=formfieldname>Email subject</div>
+<input type=text name=emailSubject value="{{=emailSubject}}">
+<div class=formfieldname>Schedule</div>
+
+<select name="scheduleType" id="scheduleType" OnChange="ChangeSchedule();">
+    {{for t in [("DAY", "Daily"), ("WEEK", "Weekly"), ("MONTH", "Monthly")]:}}
+        <option value="{{=t[0]}}"{{if t[0] == scheduleType: response.write(" selected")}}>{{=t[1]}}</option>
+    {{pass}}
+</select>
+<span id="scheduleWeeklyDiv" class="scheduleDivs">
+<select name="scheduleWeekly" id="scheduleWeekly" style="width:100px;">
+    {{for t in [(1, "Sunday"), (2, "Monday"), (3, "Tuesday"), (4, "Wednesday"), (5, "Thursday"), (6, "Friday"), (7, "Saturday")]:}}
+        <option value="{{=t[0]}}"{{if t[0] == scheduleWeekly: response.write(" selected")}}>{{=t[1]}}</option>
+    {{pass}}
+</select>
+</span>
+
+<span id="scheduleMonthlyDiv" class="scheduleDivs">
+<select name="scheduleMonthly" id="scheduleMonthly" style="width:100px;">
+    {{for t in xrange(1, 29):}}
+        <option value="{{=t}}"{{if t == scheduleMonthly: response.write(" selected")}}>{{=t}}</option>
+    {{pass}}
+</select>
+</span>
+
+
+<script>
+function ChangeSchedule() {
+    var t = $("#scheduleType").val();
+    $(".scheduleDivs").hide();
+    if (t == "WEEK") {
+        $("#scheduleWeeklyDiv").show();
+    } else if (t == "MONTH") {
+        $("#scheduleMonthlyDiv").show();
+    }
+}
+ChangeSchedule();
+</script>
+
+<div class=formfieldname>
+<input type=checkbox id="isDisabled" name="isDisabled" value=1 {{if disabled: response.write("Checked")}}>
+<label for=isDisabled>Disabled</label></div>
+
+
+<div class=formfieldname>
+<input type=checkbox id="onlyAlert" name="onlyAlert" value=1 {{if onlyAlert: response.write("Checked")}}>
+<label for=onlyAlert>Only Send Digest if alert is triggered</label></div>
+
+<div class=formfieldname>
+<input type=checkbox id="sendDescription" name="sendDescription" value=1 {{if sendDescription: response.write("Checked")}}>
+<label for=sendDescription>Include description in digest mail</label></div>
+
+
+{{if digestID > 0:}}
+    <div class="header">Recipients</div>
+    <div id="digestEmailDiv">
+    {{if not digestEmails:}}
+    <div class="normaltext"><i>This Digest has no recipients</i></div>
+    {{pass}}
+    {{for r in digestEmails:}}
+        {{img = "user1.png"
+        title = "This is a user"
+        if r.mailingList: 
+            img = "users1.png"
+            title = "This is a mailing list"
+        pass
+        }}
+        <div class="digestEmail" title="{{=title}}">
+
+            <img src="{{=URL("static/images/%s" % img)}}" class=middleimg> {{=r.fullName}} ({{=r.emailAddress}})
+            {{if r.mailingList: response.write(" (mailing list)")}}
+            <div style="float:right;font-weight:normal;">
+                <a href="DeleteDigestEmail?digestEmailID={{=(r.digestEmailID or 0)}}" style="color:crimson;" OnClick="return confirm('Are you sure you want to remove this recipient?');"><img src="{{=URL("static/images/DeleteRed_sml.png")}}" title="Remove Recipient" class="deleteButton"></a>
+            </div>
+            {{if r.cc: response.write(XML("<div style=\"float:right;\">cc&nbsp;&nbsp;</div>"))}}
+        </div>
+    {{pass}}
+    </div>
+    <a class="normaltext link" OnClick="AddRecipient(0);">Add Recipient</a> &middot; 
+    <a class="normaltext link" OnClick="AddRecipient(1);">Add CC</a>
+    <div class="header">Alerts</div>
+    <table id="alerts_table" class="ordertable" style="width:500px;">
+    {{if not digestAlerts:}}
+    <div class="normaltext"><i>This Digest has no alerts</i></div>
+    {{pass
+    i = 0
+    maxPosition = 0
+    for i, a in enumerate(digestAlerts):
+        WriteDigestAlert(a)
+        maxPosition = max(a.position, maxPosition)
+    pass
+    }}</table>
+    <a href="EditDigestAlert?alertID=0&digestID={{=digestID}}&position={{=maxPosition+1}}" class="normaltext">Add Alert</a> &middot; 
+    <a href="TestDigestAlert?alertID=0&digestID={{=digestID}}" class="normaltext">Test Alerts</a>
+
+    <div class="header">Sections</div>
+    <table id="sections_table" class="ordertable" style="width:500px;">
+    {{if not digestSections:}}
+    <div class="normaltext"><i>This Digest has no sections</i></div>
+    {{pass
+    i = 0
+    maxPosition = 0
+    for i, s in enumerate(digestSections):
+        WriteDigestSection(s)
+        maxPosition = max(s.position, maxPosition)
+    pass}}
+    </table>
+    <a href="EditDigestSection?sectionID=0&digestID={{=digestID}}&position={{=maxPosition+1}}" class="normaltext">Add Section</a>
+    <!-- &middot; <span class="link" OnClick="AddFromUrl(0);">Add Section from URL</span>-->
+    <div style="padding-top:24px"><input type=submit value="Save Digest" style="height:34px;width:160px;"></div>
+    </form>
+
+    {{if digestID:}}
+    <br><div class=normaltext>
+    <a style="color:crimson;" href="DeleteDigest?digestID={{=digestID}}" OnClick="return confirm('Are you sure you want to delete this digest?');">Delete this digest</a>
+     &middot; 
+    <!--<a href="EditDigest?digestID={{=digestID}}&duplicate=1">Duplicate digest</a>
+     &middot; -->
+    <a href="SendDigest?digestID={{=digestID}}&email={{=session.userName}}@ccpgames.com">Send to me now</a> &middot;
+    <a href="SendDigest?digestID={{=digestID}}" OnClick="return confirm('Are you sure you want to send this to all recipients?');">Send to all recipients now</a>
+    </div>
+    {{pass}}
+{{else:}}
+    <div style="padding-top:24px"><input type=submit value="Start Creating Digest" style="height:34px;width:160px;"></div>
+{{pass}}
+
+
+<script>
+$(document).ready(function() {
+    $(".ordertable").tableDnD({
+        onDragClass: "dragging",
+        onDrop: function(table, row) {
+            which = $(table).attr("id").split("_")[0]
+            var rows = table.tBodies[0].rows;
+            ids = ""
+            for (var i=0; i<rows.length; i++) {
+                var idd = rows[i].id;
+                if (idd.indexOf("_") >= 0)
+                    ids += idd.split("_")[1]+",";
+            }
+            $("#ordertable tr:even").addClass('alt');
+            $("#ordertable tr:odd").removeClass('alt');
+            url = "OrderDigestSectionsDragDrop?order=" + ids + "&which=" + which + "&digestID=" + $("#digestID").val();
+            $.getScript(url);
+        },
+        onDragStart: function(table, row) {
+
+        }
+    });
+});
+</script>

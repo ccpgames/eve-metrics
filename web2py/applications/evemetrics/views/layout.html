@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+
+  <title>{{=response.title or request.application}}</title>
+  <meta name="application-name" content="{{=request.application}}" />
+  <link rel="shortcut icon" href="{{=URL('static','favicon.ico')}}" type="image/x-icon">
+  <script src="{{=URL('static','js/modernizr.custom.js')}}"></script>
+
+  <!-- include stylesheets -->
+  {{
+  response.files.append(URL('static','css/skeleton.css'))
+  response.files.append(URL('static','css/web2py.css'))
+  response.files.append(URL('static','css/superfish.css'))
+  response.files.append(URL('static','css/tablesorter.css'))
+  response.files.append(URL('static','css/jquery.tagbox.css'))
+  response.files.append(URL('static','js/superfish.js'))
+  response.files.append(URL('static','jqueryui/css/redmond/jquery-ui-1.8.17.custom.css'))
+
+  # http://shjs.sourceforge.net/
+  response.files.append(URL('static','css/sh/sh_ide-msvcpp.css'))
+  }}
+
+  {{include 'web2py_ajax.html'}}
+
+  <script type="text/javascript">
+    jQuery(function(){ jQuery('ul.sf-menu').supersubs({minWidth:12,maxWidth:30,extraWidth:3}).superfish(); });
+  </script>
+  {{
+  middle_columns = 'sixteen'
+  }}
+
+<style>
+.menusel {
+  color:white;
+  background-image: -webkit-linear-gradient(top,#222,#555);
+  background-image: -o-linear-gradient(top,#222,#555);
+  background-image: -moz-linear-gradient(90deg, #222, #555);
+  background-image: linear-gradient(top,#222,#555);
+  background-image: -ms-linear-gradient(top,#222,#555);
+}
+.bod {
+//  background: url({{=URL("static/images/noise_faint.png")}});
+}
+
+</style>
+</head>
+{{def MatchesUrl(url):
+  u = url[1:]
+  if u and u in GetFullUrl() or url == GetFullUrl():
+    return True
+  return False
+pass}}
+<body class=bod>
+
+  <div class="wrapper"><!-- for sticky footer -->
+
+    <div class="topbar">
+      <div class="container">
+      <div class="sixteen columns">
+      <div id=topbar>
+      {{if not request.user_agent().is_mobile:}}
+        <a href="{{=URL("index")}}"><img src="{{=URL(LOGO_IMAGE)}}"></a>
+      {{pass}}
+          <div id="navbar" class=normaltext>
+          {{img = ""
+          if session.userName:
+            if not request.user_agent().is_mobile:
+              n = XML(session.fullName)
+              if session.admin: n += " (admin)"
+              if session.teamName: n += " / <span class=normaltext>%s</span>" % session.teamName.encode("UTF-8")
+              img = "<img src=\"http://myccp/User Photos/Profile Pictures/ccp_%s_LThumb.jpg\" height=60 style=\"vertical-align:bottom;\">" % session.userName}}
+              <table><tr><td style="text-align:right;">{{=XML(n)}}<br><span style="font-size:11px;"><a href="Logout">Logout</a></td><td>{{=XML(img)}}</td></tr></table>
+            {{pass
+          else:}}
+            <a href="Login" class=button style="color:black">Log On</a>
+          {{pass}}
+          {{#='auth' in globals() and auth.navbar(separators=(' ',' | ',''))}}</div>
+        </div>
+          {{is_mobile=request.user_agent().is_mobile}}
+          <div id="menu">{{#=MENU(response.menu, _class='mobile-menu' if is_mobile else 'sf-menu',mobile=is_mobile)}}
+          <ul class="sf-menu">
+          {{for m in response.menu:
+            c = ""
+            s = ""
+            isMatch = MatchesUrl(m[2])
+            if not isMatch:
+              for u in m[3]:
+                isMatch = MatchesUrl(u)
+                if isMatch: break
+              pass
+            pass
+            if isMatch:
+              c = "menusel"
+              s = "color:#EEEEEE;"
+            pass}}
+          <li><a class="{{=c}}" href="{{=m[2]}}" style="{{=s}}">{{=m[0]}}</a></li>
+          {{pass}}
+          {{if 0:}}
+          <li><a href="Admin">Admin</a></li>
+          {{pass}}
+          </ul>
+          </div>
+        </div>
+      </div>
+    </div><!-- topbar -->
+
+    <div class="flash">{{=XML(response.flash or '')}}</div>
+
+
+    <div class="main">
+      <div class="container">
+        <div class="{{=middle_columns}} columns center">
+        {{if response.systemMessage:}}
+        <div class=systemmessage>
+          {{=XML(response.systemMessage.replace("\n", "<br>"))}}
+        </div>
+        {{pass}}
+          {{block center}}
+          {{include}}
+          {{end}}
+        </div>
+      </div><!-- container -->
+      <style>
+      {{if not int(GetCookie("fullwidth") or 0):}}
+        .container .sixteen.columns {
+            max-width: 940px;
+            width:100%;
+        }
+      .fullcontainer2 {
+        display: inline-block;
+        text-align:left;
+        width:100%;
+      }
+
+      {{else:}}
+        .container .sixteen.columns {
+            width: 100%;
+        }
+      .fullcontainer2 {
+        max-width: 940px;
+        width:100%;
+        text-align:left;
+      }
+      {{pass}}
+      .fullcontainer {
+        width:100%;
+        max-width:940px;
+        text-align: center;
+        margin-left:auto;
+        margin-right:auto;
+      }
+      </style>
+      <div class="fullcontainer">
+        <div class="fullcontainer2">
+          {{block fullView}}
+          {{end}}
+        </div>
+      </div>
+      <div style="clear:both;"></div>
+      <div class="container">
+        {{block bottomView}}
+        {{end}}
+      </div>
+
+    </div><!-- main -->
+
+{{if session.userName or 1:
+txt = ""}}
+<div style="width: 940px;margin-left: auto; margin-right: auto; ">
+{{if response.procquery:  txt += "<span OnClick=\"ToggleExpand('procquery');\" class=\"link smallertext\">Show proc SQL</span> &middot; "
+if response.mainquery:    txt += "<span OnClick=\"ToggleExpand('mainquery');\" class=\"link smallertext\">Show main SQL</span> &middot; "
+if response.query:        txt += "<span OnClick=\"ToggleExpand('query');\" class=\"link smallertext\">Show other SQL</span> &middot; "
+txt = txt[:-10]
+response.write(XML(txt))}}
+
+{{if response.procquery:}}
+  <div style="display:none;" id=procquery>
+  <i>Procedure SQL</i>
+  {{for sql in response.procquery:}}
+    <table width="100%" style="border:1px dashed black;"><tr><td><pre class="sh_sql">{{=XML(MakePrettySQL(sql))}}</pre></td></tr></table><br>
+  {{pass}}
+  </div>
+{{pass}}
+  <div style="display:none;" id=mainquery>
+  <i>Primary SQL</i>
+  {{for sql in response.mainquery:}}
+    <table width="100%" style="border:1px dashed black;"><tr><td><pre class="sh_sql">{{=XML(MakePrettySQL(sql))}}</pre></td></tr></table><br>
+  {{pass}}
+  </div>
+  <div style="display:none;" id=query>
+  <i>Secondary SQL</i>
+  {{for sql in response.query:}}
+    <table width="100%" style="border:1px dashed black;"><tr><td><pre class="sh_sql">{{=XML(MakePrettySQL(sql))}}</pre></td></tr></table><br>
+  {{pass}}
+  </div>
+
+
+</div>
+
+{{pass}}
+
+<iframe width="1" height="1" name="worker" frameborder="0" scrolling="auto"></iframe>
+
+    <div class="push"></div>
+  </div><!-- wrapper -->
+
+
+{{gen = ""
+ if response.buildtime: gen = " &middot; Page generated in %ss" % response.buildtime
+ if response.numViews: gen += " &middot; Page has been viewed %s times" % response.numViews
+ gen = XML(gen)
+}}
+  <div class="footer">
+    <div class="container">
+      <div class="sixteen columns">
+        {{block footer}} <!-- this is default footer -->
+        <div class="footer-content clearfix">
+          <div class="copyright"><!--{{=T('Copyright')}} &#169; 2012 <a href="mailto:teamzorglub@ccpgames.com">Team Zorglúbb</a>-->{{=gen}}</div>
+          <div style="float: right;">
+             <!--<a href="SetWidth" title="Toggle Wide"><img style=\"vertical-align:top;\" src="{{=URL("static/images/toolbar/wide_off.png")}}"></a>-->
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div><!-- container -->
+  </div><!-- footer -->
+
+  <!--[if lt IE 7 ]>
+    <script src="{{=URL('static','js/dd_belatedpng.js')}}"></script>
+    <script> DD_belatedPNG.fix('img, .png_bg'); //fix any <img> or .png_bg background-images </script>
+    <![endif]-->
+  {{if response.google_analytics_id:}}<script type="text/javascript"> var _gaq = _gaq || []; _gaq.push(['_setAccount', '{{=response.google_analytics_id}}']); _gaq.push(['_trackPageview']); (function() { var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true; ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js'; var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s); })(); </script> {{pass}}
+
+</body>
+</html>

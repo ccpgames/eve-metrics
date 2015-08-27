@@ -1,0 +1,99 @@
+{{extend 'servicemonitor/baselayout.html'}}
+
+<style>
+table {
+    width:1000px;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
+    -o-border-radius: 10px;
+    border-radius:10px;
+}
+td {
+    padding:6px ;
+    margin:0px;
+    border-bottom:1px solid #AAAAAA;
+    vertical-align: middle;
+    height:24px;
+}
+h1 {
+    font-size:18px;
+}
+img {
+    vertical-align: middle;
+}
+
+.row_good {
+    background-color:#b5ffa4;
+}
+.row_bad {
+    background-color:#fd5f5a;
+}
+.row_warning {
+    background-color:#ffeb7a;
+}
+.row_progress {
+    background-color:#BdC6ff
+}
+.row_none {
+    background-color:#DDDDDD;
+}
+.row_danger {
+    background-color:#aa2222 !important;
+    color:white !important;
+    font-weight:bold;
+}
+</style>
+
+
+<h1>Last refresh: {{=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}}</h1>
+{{for r in results:}}
+    <h1>{{=r[0]}}</h1>
+    {{if not r[1]:}}
+        <p>No tasks in progress</p>
+    {{else:}}
+        <table>
+        <tr>    
+            <th>Name</th>
+            <th>taskID</th>
+            <th>Start Time</th>
+            <th>Duration</th>
+            <th>Fixed text</th>
+            <th>Parent</th>
+        </tr>
+        {{for row in r[1]:}}
+            <tr>    
+                <td><b>{{=row[0]}}</b></td>
+                <td>{{=row[1]}}</td>
+                <td>{{=row[2]}}</td>
+                <td>{{=row[3]}}</td>
+                <td>{{=row[4]}}</td>
+                <td>{{=row[5]}}</td>
+            </tr>        
+        {{pass}}
+        </table>
+    {{pass}}
+{{pass}}
+
+{{for r in idleFailed:}}
+    <h1>{{=r[0]}}</h1>
+    {{if not r[1]:}}
+        <p>No tasks</p>
+    {{else:}}
+        <table>
+        <tr>
+            <th>Name</th>
+            <th>taskID</th>
+            <th>Last Run Time</th>
+            <th>Last Result</th>
+        </tr>
+        {{for row in r[1]:}}
+            <tr>    
+                <td><b>{{=row[0]}}</b></td>
+                <td>{{=row[1]}}</td>
+                <td>{{=row[2]}}</td>
+                <td>{{=row[3]}}</td>                
+            </tr>        
+        {{pass}}
+        </table>
+    {{pass}}
+{{pass}}

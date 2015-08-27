@@ -1,0 +1,86 @@
+{{left_sidebar_enabled,right_sidebar_enabled=False,True}}
+{{extend 'layout.html'}}
+
+{{def TagItem(l, showName=True):
+	if not l[4]: return
+	name = ""
+	if showName: name = " <span class=smallertext> (tagged by <a href=\"%suserName=%s\">%s</a>)" % (GetFullUrlWithout("userName"), l[6], l[6])
+	t = ""
+	if l[4] == "Report": 
+		lnk = WriteCounterLink(l[-1])
+		#lnk = lnk.decode("UTF-8", errors="ignore")
+		t = (l[-1].groupName or "unknown") + " / " + lnk
+	elif l[4] == "Collection":
+		lnk = WriteCollectionLink(l[-1])
+		#lnk = lnk.decode("UTF-8", errors="ignore")
+		t = (l[-1].groupName or "unknown") + " / " + lnk
+	else:
+		t = l[3]
+	pass}}
+	<li style="font-size:13px;">
+	<img src="{{=URL("static/images/%s" % l[5])}}" width=16 class=middleimg> {{=XML(t)}}{{=name}}
+	</li>
+{{pass}}
+{{if not starredMarkers and not starredReports and not starredCollections and not starredDashboards and not tags:}}
+
+<h4/>Here are your available options</h4>
+<ul>
+{{for i, m in enumerate(response.menu):
+	if m[2] and i > 0:}}
+  <li><a href="{{=m[2]}}">{{=m[0]}}</a></li>
+  {{pass}}
+{{pass}}
+</ul>
+{{pass}}
+
+{{if starredDashboards:
+	tagLinks = starredDashboards.values()[0]}}
+	<h4>My starred Dashboards</h4>
+	<ul style="list-style-type:none;">
+	{{for l in tagLinks:}}
+		{{TagItem(l, False)}}
+	{{pass}}
+	</ul>
+{{pass}}
+{{if starredCollections:
+	tagLinks = starredCollections.values()[0]}}
+	<h4>My starred Collections</h4>
+	<ul style="list-style-type:none;">
+	{{for l in tagLinks:}}
+		{{TagItem(l, False)}}
+	{{pass}}
+	</ul>
+{{pass}}
+{{if starredReports:
+	tagLinks = starredReports.values()[0]}}
+	<h4>My starred Reports</h4>
+	<ul style="list-style-type:none;">
+	{{for l in tagLinks:}}
+		{{TagItem(l, False)}}
+	{{pass}}
+	</ul>
+{{pass}}
+{{if starredMarkers:
+	tagLinks = starredMarkers.values()[0]}}
+	<h4>My starred Markers</h4>
+	<ul style="list-style-type:none;">
+	{{for l in tagLinks:}}
+		{{TagItem(l, False)}}
+	{{pass}}
+	</ul>
+{{pass}}
+{{if tags:}}
+	{{for tagName, tagLinks in tags.iteritems():
+		if not tagName: continue}}
+	<h4><a href="Tags?tag={{=tagName}}">{{=tagName}}</a></h4>
+	<ul style="list-style-type:none;">
+	{{for l in tagLinks:}}
+		{{TagItem(l, False)}}
+	{{pass}}
+	</ul>
+	{{pass}}
+{{pass}}
+
+{{if session.admin:}}
+{{=A(T("Administrative Interface"), _href=URL('admin','default','index'), _class='button', _style='margin-top: 1em;')}}
+{{pass}}

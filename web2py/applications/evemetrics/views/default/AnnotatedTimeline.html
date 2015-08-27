@@ -1,0 +1,32 @@
+<h3>{{=controlID}}</h3>
+<script>
+google.load('visualization', '1', {packages: ['annotatedtimeline']});
+function drawVisualization() {
+  var data = new google.visualization.DataTable();
+  data.addColumn('date', 'Date');
+      
+data.addRows({{=len(dates)}});
+{{for i, dt in enumerate(dates):
+	lst = dt.split("-")}}
+	data.setValue({{=i}}, 0, new Date({{=lst[0]}}, {{=lst[1]}}, {{=lst[2]}}));{{
+pass}}
+
+{{
+j = 1
+for name, vals in data.iteritems():}}
+data.addColumn('number', '{{=name}}');
+{{for i, v in enumerate(vals):}}
+	data.setValue({{=i}}, {{=j}}, {{=v}});{{
+	pass
+	j += 1
+pass}}
+
+var dt = new Date();
+dt.setMonth(dt.getMonth()-2)
+var annotatedtimeline = new google.visualization.AnnotatedTimeLine(
+      document.getElementById('visualization_{{=controlID}}'));
+  annotatedtimeline.draw(data, {'colors': ['green', 'orange', 'crimson', 'purple'], 'displayAnnotations': true, 'fill': 5, 'annotationsWidth': 20, 'thickness': 2, 'displayRangeSelector': true});
+}
+google.setOnLoadCallback(drawVisualization);
+</script>
+<div id="visualization_{{=controlID}}" style="width: 920px; height: 300px;"></div>

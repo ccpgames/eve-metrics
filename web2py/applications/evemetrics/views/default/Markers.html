@@ -1,0 +1,145 @@
+{{extend 'layout.html'}}
+
+<style>
+.markerType {
+	font-size:13px;
+	padding:6px;
+	margin:5px;
+	cursor:pointer;
+	-webkit-border-radius: 10px 10px 0px 0px;
+	-moz-border-radius: 10px 10px 0px 0px;
+	border-radius: 10px 10px 0px 0px;
+	background-color:#DDDDDD;
+	width:125px;
+	text-align:center;
+    background: -moz-linear-gradient(top, #EEEEEE, #999999);
+    background: linear-gradient(top, #EEEEEE, #999999);
+    background: -webkit-linear-gradient(top, #EEEEEE, #999999);
+    background: -ms-linear-gradient(top, #EEEEEE, #999999);
+    background: linear-gradient(top, #EEEEEE, #999999);
+}
+.seltable {
+	margin:10px;
+}
+.sel {
+	font-weight:bold;
+	color:white;
+	background-color:black;
+	background: -moz-linear-gradient(top, #444444, #222222);
+	background: linear-gradient(top, #444444, #222222);
+	background: -webkit-linear-gradient(top, #444444, #222222);
+	background: -ms-linear-gradient(top, #444444, #222222);
+	background: linear-gradient(top, #444444, #222222);
+}
+</style>
+
+<div class="addbuttondiv"><a href="AddMarker?typeID={{=typeID}}" class=button><img src="{{=URL("static/images/add2.png")}}" style="vertical-align:middle; height:14px;"> <span style="line-height:22px;">Add new event</span></a></div><br>
+
+<div style="width:100%;margin-top:30px;">
+<div style="float:left;">
+	<table class=seltable style="margin:0px;">
+	<tr>
+	{{for k, v in markerTypes.iteritems():
+		s = ""
+		s2 = ""
+		if k == typeID:
+			s = " sel"
+			s2 = "color:white;"
+		pass
+		if not v.private:}}
+		<td class="markerType{{=s}}" OnClick="Goto('?typeID={{=k}}');"><a href="?typeID={{=k}}" style="{{=s2}}">{{=v.title}}</a></td>
+		{{pass}}
+	{{pass}}
+	</tr>
+	</table>
+</div>
+<div style="float:right;">
+	<table class=seltable style="margin:0px;padding:0px;">
+	<tr>
+	{{for k, v in {-1: "My Events"}.items():
+		s = ""
+		s2 = ""
+		if k == typeID or markerTypes.get(realTypeID).private:
+			s = " sel"
+			s2 = "color:white;"
+		pass
+		}}
+		<td class="markerType{{=s}}" OnClick="Goto('?typeID={{=k}}');"><a href="?typeID={{=k}}" style="{{=s2}}">{{=v}}</a></td>
+	{{pass}}
+	</tr>
+	</table>
+</div>
+</div>
+<div style="clear:both;"></div>
+<form method=post action="MoveMarkersToCategory">
+<input type=hidden name=typeID value="{{=typeID}}">
+<table class="zebra datatable tablesorter" width=940 style="margin-top:0px;">
+<thead> 
+<tr><th width="1%">
+{{if manage:}}
+<input type=checkbox onclick="toggleChecked(this.checked)">
+{{pass}}
+</th><th>Date</th><th>Event Type</th><th>Event</th></tr>
+</thead>
+<tbody>
+{{for marker in markers:
+contents = ""
+link = ""
+if marker["url"]:
+	contents += "<a href=\"%s\" title=\"%s\"><img src=\"%s\"></a>" % (marker["url"], marker["url"], URL("static/images/link.png"))
+pass
+if marker["important"]:
+	contents += " <img src=\"%s\" title=\"This is an important event for CCP\">" % (URL("static/images/flag_green.png"))
+pass
+if contents:
+	link = "<div style=\"float:right;\">%s</div>" % contents
+pass}}
+<tr>
+	<td width="1%">
+		{{if manage:}}
+		<input type=checkbox name=chk class=rowchk value={{=marker["markerID"]}}>
+		{{pass}}
+	</td>
+	<td><nobr>{{=FmtDate(marker["dateTime"])}}</nobr></td>
+	<td>
+		{{if marker["categoryID"]:}}
+			<nobr><a href="{{=GetFullUrlWithout("categoryID")}}categoryID={{=marker["categoryID"]}}">{{=marker["CATEGORY_TITLE"]}}</a></nobr>
+		{{pass}}
+	</td>
+	<td><a href="ViewMarker?markerID={{=marker["markerID"]}}">{{=marker["title"]}}</a>
+	{{if session.userName:}}
+		(<a href="AddMarker?markerID={{=marker["markerID"]}}">edit</a>)
+	{{pass}}
+	{{=XML(link)}}</td>
+</tr>
+{{pass}}
+</tbody>
+</table>
+{{if manage:}}
+<select name=toCategoryID id=toCategoryID style="width:300px;">
+	<option value=0>Select category...</option>
+{{
+for k, v in categories.iteritems():
+}}
+	<option value={{=k}}>{{=v.title}}</option>
+{{pass}}
+</select>
+
+<input type=submit value="Move to category">
+{{pass}}
+</form>
+{{if not request.vars.all and len(markers) >= 100:}}
+<div class=normaltext>Top 100 shown. <a href="{{=GetFullUrl()}}all=1">Show All</a></div>
+{{pass}}
+
+{{if session.admin and not request.vars.manage:}}
+<a href="{{=GetFullUrlWithout("manage")}}manage=1">Manage markers</a>
+{{pass}}
+<script>
+$(document).ready(function() { 
+    $(".tablesorter").tablesorter( {headers: { 0: { sorter: false} }} ); 
+} 
+); 
+
+</script>
+

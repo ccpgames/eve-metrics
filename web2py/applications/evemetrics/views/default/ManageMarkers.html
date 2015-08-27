@@ -1,0 +1,37 @@
+{{extend 'layout.html'}}
+
+<h3>Manage Markers for {{=typeName}}</h3>
+{{
+txt = ""
+for k, v in markerTypes.iteritems():
+	txt += "<a href=\"?typeID=%s\">%s</a> &middot; " % (k, v.title)
+pass
+response.write(XML(txt[:-10]))}}
+
+
+<table class="zebra datatable tablesorter">
+<thead>
+	<tr>
+		<th>Name</th>
+		<th>Markers</th>
+		<th>Action</th>
+	</tr>
+</thead>
+<tbody>
+{{for r in markerTypeCategories:}}
+<tr>
+	<td><a href="Markers?categoryID={{=r.categoryID}}">{{=r.title}}</a></td><td>{{=r.numMarkers}}</td>
+	<td style="width:70px;"> <a href="EditMarkerCategory?categoryID={{=r.categoryID}}">Edit</a> &middot; <a href="DeleteMarkerCategory?categoryID={{=r.categoryID}}" OnClick="return confirm('Are you sure you want to delete this category?');">Delete</a> </td>
+</tr>
+{{pass}}
+</tbody>
+</table>
+
+<a href="EditMarkerCategory?categoryID=0&typeID={{=typeID}}">Add new category to {{=typeName}}</a>
+<script>
+$(".tablesorter").tablesorter(); 
+    $(".tablesorter").bind("sortEnd",function() { 
+    	$(".zebra tr:even").removeClass("alt");
+        $(".zebra tr:odd").addClass("alt");
+    }); 
+</script>

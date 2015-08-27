@@ -1,0 +1,35 @@
+{{extend 'layout.html'}}
+
+
+<h3><a href="Digests">Digests</a> > <a href="EditDigest?digestID={{=digestID}}">{{=digestName}}</a> >
+{{if alertID:}}
+<a href="EditDigestAlert?digestID={{=digestID}}&alertID={{=alertID}}">Alert</a> >
+{{pass}} Test Alert</h3>
+
+{{for i, alertInfo in enumerate(alerts):
+    trig = "<div style=\"color:crimson;float:right;\">Triggered</div>" if alertInfo["rows"] else "<div style=\"color:green;float:right;\">Not triggered</div>"}}
+    <br><h4><a href="EditDigestAlert?alertID={{=alertInfo["alertID"]}}&digestID={{=digestID}}">Alert #{{=(i+1)}}</a>{{=XML(trig)}}</h4>
+    <pre>{{=alertInfo["sql"]}}</pre>
+    {{if not alertInfo["rows"]:}}
+    {{else:}}
+    <table class="zebra datatable tablesorter">
+        <thead>
+        <tr>
+            {{for v in alertInfo["rows"][0].cursor_description:}}
+            <th class=header>{{=v[0]}}</th>
+            {{pass}}
+        </tr>
+        </thead>
+        <tbody>
+        {{for r in alertInfo["rows"]:}}
+            <tr>
+                {{for v in alertInfo["rows"][0].cursor_description:}}
+                <td>{{=getattr(r, v[0])}}</td>
+                {{pass}}
+            </tr>
+        {{pass}}
+        </tbody>
+    </table>
+    {{pass}}
+    <hr>
+{{pass}}

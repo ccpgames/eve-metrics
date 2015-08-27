@@ -1,0 +1,54 @@
+{{extend 'layout.html'}}
+<h2>Access rules for <a href="{{=contentUrl}}"><i>{{=contentTitle}}</i></a> ({{=contentType.capitalize()}} #{{=contentID}})</h2>
+<style>
+.section {
+    border:1px solid #EEEEEE;
+    background-color:#EAEAEA;
+    width:493px;
+    padding:3px;
+    margin-bottom:10px;
+    font-size: 14px;
+}
+.deleteButton {
+    padding:3px;
+}
+.deleteButton:hover {
+    border:1px solid #BBBBBB;
+    padding:2px;
+    border-radius:3.01px;
+    background-color:#CCCCCC;
+}
+
+</style>
+
+{{def WriteAccessLine(r):}}
+		{{img = "user1.png"
+		title = "This is a user"
+			if r.mailingList: 
+				img = "users1.png"
+				title = "This is a mailing list"
+			pass
+		}}
+	<div class="section" title="{{=title}}">
+		<img src="{{=URL("static/images/%s" % img)}}" class=middleimg> {{=r.fullName}} ({{=r.emailAddress}})
+        <div style="float:right;font-weight:normal;">
+            <a href="DeleteAccessRule?contentType={{=contentType}}&contentID={{=contentID}}&accessRuleID={{=r.accessRuleID}}" style="color:crimson;" OnClick="return confirm('Are you sure you want to revoke this access?');"><img src="{{=URL("static/images/DeleteRed_sml.png")}}" title="Revoke access" class="deleteButton"></a>
+        </div>
+	</div>
+{{pass}}
+<h4>The following users and mailing lists have access</h4>
+{{if not rules: response.write(XML("<div><i>Page is open to everyone</i>.<br><div class=normaltext>If you add an access rule this page will become restricted.</div></div><br>"))
+for r in rules:
+	WriteAccessLine(r)
+pass}}
+
+<script>
+function AddAccess()
+{
+    var emails = prompt("Email Addresses to add (comma separated)");
+    if (!emails)
+        return;
+    Goto("AddAccessRule?contentType={{=contentType}}&contentID={{=contentID}}&emails=" + encodeURIComponent(emails))
+}
+</script>
+<input type="button" name="add" value="Add access" OnClick="AddAccess();">

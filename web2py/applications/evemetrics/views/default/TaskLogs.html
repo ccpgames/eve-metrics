@@ -1,0 +1,112 @@
+{{extend 'layout.html'}}
+<h2>Task Logs</h2>
+{{
+	filters = [
+	 	("", "ebs_METRICS - No filter"),
+	 	("db", "ebs_METRICS - DB"),
+	 	("hadoop", "ebs_METRICS - Hadoop"),
+	 	("f", "ebs_FACTORY - No filter"),
+	 	("f.db", "ebs_FACTORY - DB"),
+	 	("f.hadoop", "ebs_FACTORY - Hadoop"),
+	 	("f.cohort", "ebs_FACTORY - Cohort"),
+	 	]
+	rowOptions = [10, 100, 1000, 10000]
+
+}}
+<script>
+function PopulateFilter() {
+	filtersByDatabase = {
+		{{for d in databases:}}
+			{{=d[0]}} : [{{=XML(",".join(["'"+dd+"'" for dd in d[1]]))}}],
+		{{pass}}
+	}
+	db = $("#db").val();
+	sel = $("#filt");
+	sel.empty();
+	filters = filtersByDatabase[db];
+	for (i = 0; i < filters.length; i++) {
+		f = filters[i];
+		s = ""
+		if (f == '{{=request.vars.filt}}')
+			s = " Selected"
+		var itemval= '<option value="'+f+'"'+s+'>'+f+'</option>';
+		sel.append(itemval);
+	}
+}
+</script>
+<form method=get>
+<table>
+	<tr><td>Database</td><td>Filter</td><td>Results</td><td>Search String</td></tr>
+	<tr>
+	<td>
+	<select id=db name="db" OnChange="PopulateFilter();">
+		{{for d in databases:}}
+		<option value="{{=d[0]}}"{{if d[0] == database: response.write(" Selected")}}>{{=d[0]}}</option>
+		{{pass}}
+	</select>
+	</td>
+	<td>
+	<select class=filters id=filt name="filt" style="width:120px;">
+	</select>
+	</td>
+	<td>
+	<select name="numRows" style="width:100px;">
+		{{for f in rowOptions:}}
+		<option value="{{=f}}"{{if f == numRows: response.write(" Selected")}}>{{=f}}</option>
+		{{pass}}
+	</select>
+	</td>
+	<td>
+	<input name="text" type="text" value="{{=text or ""}}">
+	</td>
+	<td>
+	<input type=submit value="Filter">
+	</td>
+	</tr>
+</table>
+</form>
+<script>
+	PopulateFilter()
+</script>
+<table class="zebra datatable tablesorter">
+<thead>
+<tr>
+	<th>eventID</th>
+	<th>eventDate</th>
+	<th>eventTypeName</th>
+	<th>taskName</th>
+	<th>fixedText</th>
+	<th>duration</th>
+	<th>refID</th>
+	<th>parentID</th>
+</thead>
+<tbody>
+{{if not rows:}}
+<tr><td colspan=10>No results found. :-(</td></tr>
+{{pass}}
+{{for r in rows:
+	taskName = r.taskName or ""
+	if r.nestLevel > 1: taskName = "&nbsp;&nbsp;" * r.nestLevel + r.taskName}}
+<tr>
+	<td><nobr><a href="TaskLogsDetails?db={{=database}}&filt={{=filt}}&numRows={{=numRows}}&text={{=text}}&eventID={{=r.eventID}}">{{=r.eventID}}</a></nobr></td>
+	<td><nobr>{{=r.eventDate}}</nobr></td>
+	<td><nobr>{{
+		t = r.eventTypeName
+		if r.eventTypeID == 2000001004: t = "<font color=crimson>%s</font>" % t
+		response.write(XML(t))}}</nobr></td>
+	<td><nobr>{{=XML(taskName)}}</nobr></td>
+	<td><nobr>{{=r.fixedText or ""}}</nobr></td>
+	<td><nobr>{{=r.duration or ""}}</nobr></td>
+	<td><nobr>{{=r.referenceID or ""}}</nobr></td>
+	<td><nobr>{{=r.parentID or ""}}</nobr></td>
+</tr>
+
+{{pass}}
+</tbody>
+</table>
+
+<script>
+$(document).ready(function() { 
+    $(".tablesorter").tablesorter( ); 
+});
+</script>

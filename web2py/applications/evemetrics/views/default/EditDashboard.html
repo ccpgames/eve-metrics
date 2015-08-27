@@ -1,0 +1,146 @@
+{{extend 'layout.html'}}
+<h2>
+    {{if dashboardID:}}
+        Edit Dashboard: {{=dashboardName}}
+    {{else:}}
+        Add new Dashboard
+    {{pass}}
+</h2>
+<style>
+.collul { list-style-type: none; margin: 0; padding: 0; margin-bottom: 10px; }
+.collection {
+    //border:2px solid green;
+    width:980px;
+    background-color:white;
+    margin: 5px; 
+    padding: 5px;
+}
+.config {
+    text-align:right;
+    margin-top:10px;
+    cursor:pointer;
+    color:#0069D6;
+}
+</style>
+<script>
+
+$(document).ready(function() {
+    $("#ordertable").tableDnD({
+        onDragClass: "dragging",
+        onDrop: function(table, row) {
+            var rows = table.tBodies[0].rows;
+            ids = ""
+            var groupID = 0;
+            for (var i=0; i<rows.length; i++) {
+                var idd = rows[i].id;
+                if (idd.indexOf("group") >= 0) {
+                    groupID = idd.split("_")[1];
+                } else if (idd.indexOf("_") >= 0) {
+                    var l = idd.split("_");
+                    ids += groupID + ":" + l[1] + ",";
+                }
+            }
+            $("#ordertable tr:even").addClass('alt');
+            $("#ordertable tr:odd").removeClass('alt');
+            url = "OrderCountersDragDrop?order=" + ids
+            $("#working").appendTo($(row).children()[1]);
+            $("#working").show();
+            $.getScript(url);
+        },
+        onDragStart: function(table, row) {
+
+        }
+    });
+});
+</script>
+
+<form method=POST action=SaveDashboard>
+<div class=formfieldname>Name</div>
+<input name=dashboardName value="{{=dashboardName}}" size=48><br>
+<div class=formfieldname>Days per period</div>
+<select name=numDays style="width:50px;">
+{{for d in [1,7,30,90]:
+    s = ""
+    if d == numDays: s = " Selected"}}
+    <option value="{{=d}}"{{=s}}>{{=d}}</option>
+{{pass}}
+</select>
+<div class=formfieldname>Number of columns</div>
+<select name=numColumns style="width:50px;">
+{{for d in [5,8]:
+    s = ""
+    if d == config.get("numColumns", 5): s = " Selected"}}
+    <option value="{{=d}}"{{=s}}>{{=d}}</option>
+{{pass}}
+</select>
+<div class=formfieldname>Reverse direction</div>
+<input type=checkbox name=reverse value=1{{if config.get("reverse", False): response.write(" Checked")}}>
+<div class=formfieldname>Include Day Name</div>
+<input type=checkbox name=dayName value=1{{if config.get("dayName", False): response.write(" Checked")}}>
+<div class=formfieldname>Ignore Zeros on the right</div>
+<input type=checkbox name=ignoreZeros value=1{{if config.get("ignoreZeros", False): response.write(" Checked")}}>
+<div class=formfieldname>Use dots instead of arrows for trend</div>
+<input type=checkbox name=justDot value=1{{if config.get("justDot", False): response.write(" Checked")}}>
+<div class=formfieldname>Condensed Format</div>
+<input type=checkbox name=condensed value=1{{if config.get("condensed", False): response.write(" Checked")}}>
+<div class=formfieldname>Period starts at</div>
+<select name=periodType style="width:100px;">
+{{options = ["rolling", "calendar"]
+for o in options:
+    s = ""
+    if o == config.get("periodType", None): s = " Selected"}}
+    <option value="{{=o}}"{{=s}}>{{=o.capitalize()}}</option>
+{{pass}}
+</select>
+<div class=formfieldname>Group</div>
+    <select name=groupID style="width:300px;">
+    <option value=0>Select Group...</option>
+    {{for group in groups:
+        s = ""
+        if group[0] == groupID: s = " Selected"}}
+        <option value="{{=group[0]}}"{{=s}}>{{=group[1]}}</option>
+    {{pass}}
+    </select>
+
+<div class=formfieldname>Description</div>
+<textarea name=description>{{=description}}</textarea>
+<br>
+<input type=hidden name=dashboardID value="{{=dashboardID}}">
+<br>
+<input type=submit value="Save Dashboard" style="height:32px;"><br>
+
+<br>
+<div class=normaltext>Check collections to include in this dashboard and drag to rearrange.</div>
+<div id=config>
+<table id=ordertable class="zebra datatable">
+<thead>
+    <tr><th></th><th>Collection</th></tr>
+</thead>
+<tbody>
+{{
+doneCollections = set()
+def WriteCheckBox(collectionID, groupName, collectionName):
+    if collectionID in doneCollections: return
+    doneCollections.add(collectionID)
+    s = ""
+    if collectionID in collectionIDs: s = " Checked"}}
+<tr><td style="background-image:url('{{=URL("static/images/gripblue2.png")}}'); background-repeat:no-repeat; background-position:center;"></td>
+    <td><label for="sel_{{=collectionID}}"><input type=checkbox name=collectionID id="sel_{{=collectionID}}"{{=s}} value="{{=collectionID}}">{{=groupName}} / {{=collectionName}}</label></td></tr>
+{{pass
+for collectionID in collectionIDs:
+    collection = collections.get(collectionID, None)
+    if collection:
+        WriteCheckBox(collectionID, collection.groupName, collection.collectionName)
+    pass
+pass
+for collectionID, collection in collections.iteritems():
+    WriteCheckBox(collectionID, collection.groupName, collection.collectionName)
+pass}}
+</tbody>
+</table>
+<input type=submit value="Save Dashboard">
+</div>
+</form>
+
+
+<a class=smalltext style="color:crimson" href="DeleteDashboard?dashboardID={{=dashboardID}}" OnClick="return confirm('Are you sure you want to delete this dashboard?');">Delete Dashboard</a>

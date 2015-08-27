@@ -1,0 +1,25 @@
+{{
+graphs = request.vars.graph
+if not graphs:
+    graphs = "%s_%s_%s" % (request.vars.counterID, request.vars.subjectID, request.vars.keyID)
+pass
+if graphs and type(graphs) != type([]): graphs = [graphs]
+for g in (graphs or []):}}
+    <input type=hidden name=counter value="{{=g}}">
+{{pass}}
+<input type=hidden name=name id=collectionName value="">
+<table>
+<tr>
+<td>
+<select name=collectionID id=collectionID>
+<option value="">Select collection...</option>
+<option value=0>Create a new collection</option>
+{{for collectionID, c in collections.iteritems():}}
+<option value={{=collectionID}}>{{=c.groupName or "Ungrouped"}} - {{=c.collectionName}}</option>
+{{pass}}
+</select>
+</td>
+<td>
+<input type=button name=add value="Add to collection" OnClick="AddToCollection();">
+</td>
+</tr></table>

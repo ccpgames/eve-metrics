@@ -1,0 +1,210 @@
+{{extend 'layout.html'}}
+
+<h3><a href="Digests">Digests</a> > {{=digestName}} {{if digest.disabled: response.write(XML(" (<font color=crimson>disabled</font>)"))}}
+{{if IsRestricted("DIGEST", digestID) != ACCESS_OPEN:}}
+<a href="{{=URL("AccessRules?contentType=DIGEST&contentID=%s" % digestID)}}"><img src="{{=URL("static/images/lock.png")}}" class="middleimg" title="This digest has access restrictions"></a>
+{{pass}}
+
+</h3>
+
+<style>
+input[type="checkbox"] {
+     vertical-align: middle;
+}
+.header {
+    padding-top:10px;
+    border-bottom:1px solid #CDCDCD;
+    width:500px;
+    margin-bottom:5px;
+    font-size:18px;
+}
+.digestSection {
+    border:1px solid #EEEEEE;
+    background-color:#EAEAEA;
+    width:493px;
+    padding:3px;
+    margin-bottom:10px;
+    font-size: 14px;
+}
+
+.ordertable td {
+    border-bottom:5px solid white;
+}
+
+.dragging {
+    background-color:#AAAABC;
+}
+.scheduleDivs {
+    display:none;
+}
+
+.digestEmail {
+    font-size:12px;
+    margin:2px 0px 4px 0px;
+    background-color: #EEEEEE;
+    width:493px;
+    padding:2px 0px 2px 5px;
+}
+.bold {
+    font-weight: bold
+}
+</style>
+<div style="width:494px;">
+{{
+def GetTemplateInfo(templateID):
+    template = templates.get(templateID, None)
+    if not template: return ""
+    return template.icon
+pass
+
+def WriteDigestSection(row):}}
+    <tr class="digestSection">
+    <td>
+    {{icon = GetTemplateInfo(row.templateID)
+    if icon: icon = "<img src=\"%s\" style=\"height:16px; vertical-align:middle;padding-right:2px;\">" % URL("static/images/templates/%s" % icon)
+    response.write(XML(icon))}}
+    {{=row.sectionTitle or ""}}
+        <div style="float:right;font-weight:normal;">
+            <a style="color:gray;" class=normaltext href="EditDigestSection?sectionID={{=row.sectionID}}&digestID={{=row.digestID}}">edit</a>
+            {{if row.urlToClick:}}
+             &middot; <a style="color:gray;" class=normaltext href="{{=row.urlToClick}}" target="sample">view sample</a>
+            {{pass}}
+        </div>
+    </td>
+    </tr>
+{{pass}}
+
+{{def WriteDigestAlert(row):}}
+    <tr class="digestSection">
+    <td>
+    {{icon = GetTemplateInfo(row.templateID)
+    if icon: icon = "<img src=\"%s\" style=\"height:16px; vertical-align:middle;padding-right:2px;\">" % URL("static/images/templates/%s" % icon)
+    response.write(XML(icon))}}
+    {{=row.title or ""}}
+        <div style="float:right;font-weight:normal;">
+            <a style="color:gray;" class=normaltext href="EditDigestAlert?alertID={{=row.alertID}}&digestID={{=row.digestID}}">edit</a>
+        </div>
+    </td>
+    </tr>
+{{pass}}
+
+<div class=formfieldname>Subscription status</div>
+{{
+def DigestSubscriptionStatus(emails):
+    myEmailAddress = session.userName + "@ccpgames.com"
+    myEmailAddress = myEmailAddress.lower()
+    for r in emails:
+        e = r.emailAddress.lower()
+        if e == myEmailAddress: return 1
+        if session.groups and r.fullName in session.groups: return 2
+    pass
+    return 0
+pass
+subscriptionStatus = DigestSubscriptionStatus(digestEmails)
+if subscriptionStatus == 0:}}
+    You are not subscribed to this digest
+    <div style="padding-bottom:8px;float:right;"><a href="AddDigestSubscription?digestID={{=digestID}}" class="button bold" style="color:green;">Subscribe</a></div>
+{{elif subscriptionStatus == 1:}}
+    <font color=green>You are subscribed to this digest</font>
+    <div style="padding-bottom:8px;float:right;"><a href="RemoveDigestSubscription?digestID={{=digestID}}" class="button bold">Unsubscribe</a></div>
+{{elif subscriptionStatus == 2:}}
+    <div><font color=green>You are subscribed to this digest</font></div>
+    <div class=normaltext style="line-height:120%">You are subscribed to this digest through a Mailing List.<br>
+        You cannot manually adjust your subscription.
+    </div>
+{{pass}}
+<div class=formfieldname>Schedule</div>
+{{sched = {"DAY": "Daily", "WEEK": "Weekly", "MONTH": "Monthly"}[scheduleType]
+    weekDays = {1: "Sunday", 2: "Monday", 3: "Tuesday", 4: "Wednesday", 5: "Thursday", 6: "Friday", 7: "Saturday"}
+}}
+{{if scheduleType == "DAY":
+    sched = "This digest is sent out <span class=bold>daily</span>"
+elif scheduleType == "MONTH":
+    sched = "This digest is sent out on the <span class=bold>%s.</span> of every month" % scheduleMonthly
+else:
+    sched = "This digest is sent out every <span class=bold>%s</span>" % weekDays.get(scheduleWeekly, "Unknown")
+pass
+response.write(XML(sched))}}
+<div class=formfieldname>Email Subject</div>
+{{=digest.emailSubject}}
+
+<div class=formfieldname>Description</div>
+<div class="descbox normaltext" style="width:490px;">{{=XML((description or "").replace("\n", "<br>"))}}
+<br>
+<div class=normaltext style="float:right;">
+This digest was created by <span class=bold>{{=digest.userName}}</span> on {{=FmtDate(digest.createDate)}}
+</div>
+<div style="clear:both"></div>
+</div>
+
+
+<div class="header">Recipients</div>
+<div id="digestEmailDiv">
+{{if not digestEmails:}}
+<div class="normaltext"><i>This Digest has no recipients</i></div>
+{{pass}}
+{{for r in digestEmails:}}
+        {{img = "user1.png"
+        title = "This is a user"
+            if r.mailingList: 
+                img = "users1.png"
+                title = "This is a mailing list"
+            pass
+        }}
+        <div class="digestEmail" title="{{=title}}">
+        <img src="{{=URL("static/images/%s" % img)}}" class=middleimg> {{=r.fullName}} ({{=r.emailAddress}})
+        {{if r.mailingList: response.write(" (mailing list)")}}
+        {{if r.cc: response.write(XML("<div style=\"float:right;\">cc&nbsp;&nbsp;</div>"))}}
+        <div style="float:right;font-weight:normal;">
+        </div>
+    </div>
+{{pass}}
+</div>
+<div class="header">Alerts</div>
+<table id="alerts_table" class="ordertable" style="width:500px;">
+{{if not digestAlerts:}}
+<div class="normaltext"><i>This Digest has no alerts</i></div>
+{{pass
+i = 0
+maxPosition = 0
+for i, a in enumerate(digestAlerts):
+    WriteDigestAlert(a)
+    maxPosition = max(a.position, maxPosition)
+pass
+}}</table>
+
+<div class="header">Sections</div>
+<table id="sections_table" class="ordertable" style="width:500px;">
+{{if not digestSections:}}
+<div class="normaltext"><i>This Digest has no sections</i></div>
+{{pass
+i = 0
+maxPosition = 0
+for i, s in enumerate(digestSections):
+    WriteDigestSection(s)
+    maxPosition = max(s.position, maxPosition)
+pass}}
+</table>
+</form>
+
+<br><div>
+<a href="EditDigest?digestID={{=digestID}}">Edit digest</a>
+ &middot; 
+<a href="SendDigest?digestID={{=digestID}}&email={{=session.userName}}@ccpgames.com">Send Test digest to me</a>
+ &middot; 
+<a href="SendDigest?digestID={{=digestID}}" OnClick="return confirm('Are you sure you want to send this digest to all recipients?');">Send Test digest to all recipients</a>
+</div>
+</div>
+
+{{
+    tagLinkID = digestID
+    tagLinkType = TAG_DIGEST
+
+    if digest.userName == session.userName:
+        contentType = "DIGEST"
+        contentID = digestID
+    pass
+}}
+<div style="width:500px;margin-top:20px;">
+{{include 'default/TagBox.html'}}
+</div>

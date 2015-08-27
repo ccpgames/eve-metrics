@@ -1,0 +1,43 @@
+{{extend 'layout.html'}}
+{{
+crumbs = []
+def AddCrumb(link, txt):
+	crumbs.append((link, txt))
+pass}}
+{{
+AddCrumb("Tags", "Tags")
+if request.vars.userID: AddCrumb("Tags?userID=%s" % request.vars.userID, request.vars.userName)
+if request.vars.tag: AddCrumb("Tags?tag=%s" % request.vars.tag, request.vars.tag.replace("_", "+"))
+
+if len(crumbs) > 1:
+	txt = "<h6>"
+	for i, c in enumerate(crumbs):
+		url = A(c[1], _href=c[0])
+		if i == len(crumbs)-1: url = c[1]
+		txt += XML(url) + " > "
+	pass
+	txt = txt[:-3]
+	txt += "<h6>"
+	response.write(XML(txt))
+pass
+}}
+
+<div style="text-align:right; margin-top:5px;">
+{{
+	if session.userName and not request.vars.userName and 0:
+		response.write(A("View my tags", _href=("?userName=%s" % session.userName)))
+	pass
+}}
+</div>
+{{for tagName, tagLinks in tags.iteritems():
+	if not tagName or not tagLinks: continue}}
+<h4><a href="{{=GetFullUrlWithout("tag")}}tag={{=tagName.replace("+", "_")}}">{{=tagName}}</a></h4>
+<ul style="list-style-type:none;">
+{{for l in tagLinks:
+	if not l[4]: continue}}
+	<li>
+	<img src="static/images/{{=l[5]}}" width=16 class=middleimg> {{=l[3]}} <span class=smallertext>({{=l[4]}}, tagged by <a href="{{=GetFullUrlWithout("userName")}}userName={{=l[6]}}">{{=l[6]}}</a>)</span>
+	</li>
+	{{pass}}
+</ul>
+{{pass}}

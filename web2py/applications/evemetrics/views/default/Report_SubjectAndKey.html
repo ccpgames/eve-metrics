@@ -1,0 +1,16 @@
+<table id=myTable class="zebra datatable">
+	<tr>
+		{{for colName in report["columns"]:}}
+			<th><nobr>{{=colName}}</nobr></th>
+		{{pass}}
+	</tr>
+	{{for row in report["rows"]:}}
+		<tr>
+			{{for col in row:
+				v = col
+				if type(col) == list: v = col[1]}}
+				<td><nobr>{{=v}}</nobr></td>
+			{{pass}}
+		</td>
+	{{pass}}
+</table>

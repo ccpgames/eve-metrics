@@ -1,0 +1,132 @@
+{{extend 'layout.html'}}
+{{if counterInfo:}}
+<h3>Difference Report for <span class=groupLink><a href="Reports?groupID={{=counterInfo.groupID}}">{{=counterInfo.groupName}}<img class=middleimg src="static/images/asc2.gif"></a></span> / <a href="Report?counterID={{=counterID}}">{{=counterInfo.counterName}}</a></h3>
+{{else:}}
+<h3>Difference Report</h3>
+{{pass}}
+
+<form method=get>
+<table style="width:420px;">
+	<tr>
+		<td width=200>Subject</td>
+		<td width=200>Date</td>
+		<td width=200>Days</td>
+		<td width=200><nobr>Min Val</nobr></td>
+		<td width=200>Rows</td>
+		<td width=200>Sort</td>
+		<td width=200>Order</td>
+	</tr>
+<tr>
+<td>
+<input name=counterID type=hidden value="{{=counterID}}">
+<select name=subjectID id=subjectID>
+{{if not counterSubjects:}}
+<option value=0>Count</option>
+{{pass}}
+{{for s in counterSubjects:}}
+<option value={{=s[0]}} {{if s[0] == subjectID: response.write(" Selected")}}>
+	{{=s[1]}}
+</option>
+{{pass}}
+</select>
+
+</td><td>
+<input type=text name="reportDate" id="reportDate" value="{{=reportDate.strftime("%Y-%m-%d")}}" style="width:80px;">
+</td><td>
+<input type=text name="numDays" id="numDays" value="{{=numDays}}" style="width:30px;">
+</td><td>
+<input type=text name="excludeCount" id="excludeCount" value="{{=excludeCount}}" style="width:50px;">
+</td><td>
+<select name=numRows id=numRows style="width:70px;">
+{{for r in (20, 50, 100, 200, 500, 1000):}}
+<option value="{{=r}}"{{if r == numRows: response.write(" Selected")}}>{{=r}}</option>
+{{pass}}
+</select>
+</td><td>
+<select name=sort id=order style="width:100px;">
+<option value="P">Percent</option>
+<option value="C"{{if sort == "C": response.write(" Selected")}}>Count</option>
+</select>
+</td><td>
+<select name=order id=order style="width:100px;">
+<option value="0">Descending</option>
+<option value="1"{{if order == 1: response.write(" Selected")}}>Ascending</option>
+</select>
+</td><td>
+<input type=submit value="Go">
+</td>
+</tr>
+</table>
+</form>
+
+{{if subjectID is not None:}}
+<table class="zebra datatable tablesorter">
+<thead>
+<tr>
+	<th>keyID</th>
+	<th>keyText</th>
+	<th>Old Value</th>
+	<th>New Value</th>
+	<th>Difference</th>
+	<th>Increase</th>
+</tr>
+</thead>
+<tbody>
+{{
+graphs = ""
+for i, r in enumerate(rows):
+	graph = "graph=%s_%s_%s&" % (counterID, subjectID, r.keyID)
+	if i < 20:
+		graphs += graph
+	pass
+	if r.diffPercentage > 1:
+		diff = "+%.1f" % ((r.diffPercentage - 1.0) * 100.0)
+	else:
+		diff = "%.1f" % ((r.diffPercentage - 1.0) * 100.0)
+	pass
+	if not r.oldValue: 
+		diff = "NEW"
+	else:
+		diff = "%s%%" % diff
+	pass
+}}
+<tr>
+	<td>{{=r.keyID}}</td>
+	<td><a href="Counters?{{=graph}}">{{=r.keyText}}</a></td>
+	<td>{{=FmtAmt(r.oldValue)}}</td>
+	<td>{{=FmtAmt(r.value)}}</td>
+	<td>{{=FmtAmt(r.diffCount)}}</td>
+	<td>{{=diff}}</td>
+</tr>
+{{pass}}
+</tbody>
+</table>
+
+<a href="Counters?{{=graphs}}bargraph=1&numDays={{=max(numDays+7, 30)}}">View Graphs</a> {{if len(rows) > 20: response.write(" (only top 20)")}}
+{{pass}}
+
+
+<script>
+
+$(document).ready(function()
+    {
+        $(".zebra tr:odd").addClass("alt");
+    }
+);
+
+var menuDiv = null;
+$(document).ready(function() { 
+    $(".tablesorter").tablesorter( ); 
+
+    $(".tablesorter").bind("sortEnd",function() { 
+    	$(".zebra tr:even").removeClass("alt");
+        $(".zebra tr:odd").addClass("alt");
+    }); 
+        $('#reportDate').datepicker( {
+            changeMonth: true,
+            changeYear: true,
+            dateFormat: "yy-mm-dd",
+        });
+}); 
+
+</script>

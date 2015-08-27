@@ -1,0 +1,19 @@
+{{extend 'layout.html'}}
+<h2>Recent page views</h2>
+<form method=get>
+	<input name=filter value="{{=request.vars.filter or ""}}">
+</form>
+<table class="datatable">
+
+<tr><th>Date/Time</th><th>User</th><th>Host</th><th>Method</th><th>Page</th></tr>
+{{for r in rows:}}
+<tr>
+	<td><nobr>{{=r.dateTime.strftime("%Y.%m.%d %H:%M:%S")}}</nobr></td>
+	<td><nobr>{{=r.userName}}</nobr></td>
+	<td><nobr>{{=(r.hostName or "").replace(".ccp.ad.local", "")}}</nobr></td>
+	<td><nobr>{{=r.method}}</nobr></td>
+	<td><a href="{{=r.url}}">{{=r.url}}</a></td>
+</tr>
+
+{{pass}}
+</table>
